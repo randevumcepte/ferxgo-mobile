@@ -1,0 +1,115 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../features/app_mode/app_mode.dart';
+import '../../features/auth/screens/customer_otp_screen.dart';
+import '../../features/auth/screens/customer_phone_screen.dart';
+import '../../features/auth/screens/driver_login_screen.dart';
+import '../../features/home/customer_home_placeholder.dart';
+import '../../features/home/driver_home_placeholder.dart';
+import '../../features/mode_select/mode_select_screen.dart';
+import '../../features/splash/splash_screen.dart';
+import '../auth/auth_controller.dart';
+
+class AppRoutes {
+  AppRoutes._();
+
+  static const splash         = '/';
+  static const modeSelect     = '/mode';
+  static const customerPhone  = '/customer/phone';
+  static const customerOtp    = '/customer/otp';
+  static const driverLogin    = '/driver/login';
+  static const customerHome   = '/customer/home';
+  static const driverHome     = '/driver/home';
+}
+
+/// Router auth state ve mod seçimini watch eder, ona göre redirect yapar.
+///
+/// Akış:
+///   - auth.loading  → splash kalsın
+///   - auth.value=null + mode=null  → /mode
+///   - auth.value=null + mode=customer → /customer/phone
+///   - auth.value=null + mode=driver   → /driver/login
+///   - auth.value!=null user.isCustomer → /customer/home
+///   - auth.value!=null user.isDriver   → /driver/home
+final appRouterProvider = Provider<GoRouter>((ref) {
+  final notifier = _RouterRefresh(ref);
+
+  return GoRouter(
+    initialLocation: AppRoutes.splash,
+    refreshListenable: notifier,
+    debugLogDiagnostics: false,
+    redirect: (context, state) {
+      final auth = ref.read(authControllerProvider);
+      final mode = ref.read(appModeControllerProvider);
+
+      // Henüz okumadık — splash'da dur
+      if (auth.isLoading || mode.isLoading) {
+        return state.matchedLocation == AppRoutes.splash ? null : AppRoutes.splash;
+      }
+
+      final session = auth.value;
+      final appMode = mode.value;
+      final loc     = state.matchedLocation;
+
+      // Login olmuş kullanıcı
+      if (session != null) {
+        final target = session.user.isDriver ? AppRoutes.driverHome : AppRoutes.customerHome;
+        // Halen splash/login ekranlarındaysa home'a fırlat
+        const authPages = {
+          AppRoutes.splash,
+          AppRoutes.modeSelect,
+          AppRoutes.customerPhone,
+          AppRoutes.customerOtp,
+          AppRoutes.driverLogin,
+        };
+        if (authPages.contains(loc)) return target;
+        return null;
+      }
+
+      // Login olmamış
+      if (appMode == null) {
+        return loc == AppRoutes.modeSelect ? null : AppRoutes.modeSelect;
+      }
+
+      // Mod var, login yok
+      final loginEntry = appMode == AppMode.driver
+          ? AppRoutes.driverLogin
+          : AppRoutes.customerPhone;
+
+      const allowedLoginPages = {
+        AppRoutes.customerPhone,
+        AppRoutes.customerOtp,
+        AppRoutes.driverLogin,
+        AppRoutes.modeSelect, // kullanıcı geri dönüp mod değiştirebilir
+      };
+      if (allowedLoginPages.contains(loc)) return null;
+      return loginEntry;
+    },
+    routes: [
+      GoRoute(path: AppRoutes.splash,        builder: (_, _) => const SplashScreen()),
+      GoRoute(path: AppRoutes.modeSelect,    builder: (_, _) => const ModeSelectScreen()),
+      GoRoute(path: AppRoutes.customerPhone, builder: (_, _) => const CustomerPhoneScreen()),
+      GoRoute(
+        path: AppRoutes.customerOtp,
+        builder: (_, state) {
+          final phone = state.uri.queryParameters['phone'] ?? '';
+          return CustomerOtpScreen(phone: phone);
+        },
+      ),
+      GoRoute(path: AppRoutes.driverLogin,   builder: (_, _) => const DriverLoginScreen()),
+      GoRoute(path: AppRoutes.customerHome,  builder: (_, _) => const CustomerHomePlaceholder()),
+      GoRoute(path: AppRoutes.driverHome,    builder: (_, _) => const DriverHomePlaceholder()),
+    ],
+  );
+});
+
+/// Auth/mode state'leri değiştiğinde GoRouter'ı yeniden değerlendirir.
+class _RouterRefresh extends ChangeNotifier {
+  _RouterRefresh(this._ref) {
+    _ref.listen(authControllerProvider, (_, _) => notifyListeners());
+    _ref.listen(appModeControllerProvider, (_, _) => notifyListeners());
+  }
+  final Ref _ref;
+}
