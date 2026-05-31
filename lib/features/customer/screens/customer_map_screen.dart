@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/location/location_service.dart';
 import '../../../core/routing/app_router.dart';
@@ -88,6 +89,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       );
       if (!mounted) return;
       setState(() => _result = res);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _driversError = '[${e.statusCode}${e.code != null ? ' ${e.code}' : ''}] ${e.message}');
     } catch (e) {
       if (!mounted) return;
       setState(() => _driversError = e.toString());

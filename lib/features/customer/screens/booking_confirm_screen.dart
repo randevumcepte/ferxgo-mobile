@@ -90,10 +90,8 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         distanceKm: draft.distanceKm!,
         durationMinutes: draft.durationMinutes!,
       );
-      // FareCalculator response içinden total veya total_with_extras vb. ayıkla.
-      final total = (fare['total'] as num?)?.toDouble()
-                ?? (fare['total_with_extras'] as num?)?.toDouble()
-                ?? (fare['grand_total'] as num?)?.toDouble();
+      // FareCalculator → 'total_fare' anahtarı (subtotal + extras_total)
+      final total = (fare['total_fare'] as num?)?.toDouble();
       ref.read(bookingDraftProvider.notifier).setRoute(
         distanceKm: draft.distanceKm!,
         durationMinutes: draft.durationMinutes!,
