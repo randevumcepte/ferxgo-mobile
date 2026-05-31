@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/theme/app_colors.dart';
+import '../../shared/widgets/soon_card.dart';
 import '../auth/auth_repository.dart';
 
 /// Geçici müşteri home — Faz 1'in sonraki turunda harita ve rezervasyon flow'u burada olacak.
-/// Şimdilik /me'den dönen profili gösterir ve çıkışı test edebilmemizi sağlar.
 class CustomerHomePlaceholder extends ConsumerWidget {
   const CustomerHomePlaceholder({super.key});
 
@@ -42,16 +42,18 @@ class CustomerHomePlaceholder extends ConsumerWidget {
                 style: const TextStyle(color: FerogoColors.textLow, fontSize: 14),
               ),
               const SizedBox(height: 28),
-              _PlaceholderCard(
+              const SoonCard(
                 icon: Icons.map_outlined,
                 title: 'Yakındaki sürücüler',
-                subtitle: 'Sonraki adımda burası canlı harita olacak.',
+                subtitle: 'Canlı harita + sürücü seçimi burada olacak.',
+                snackBarMessage: 'Harita ekranı sonraki sürümde geliyor.',
               ),
               const SizedBox(height: 12),
-              _PlaceholderCard(
+              const SoonCard(
                 icon: Icons.history,
                 title: 'Geçmiş yolculuklar',
-                subtitle: 'Daha önce yaptığın yolculuklar buraya gelecek.',
+                subtitle: 'Tamamlanmış yolculukların listesi.',
+                snackBarMessage: 'Geçmiş ekranı sonraki sürümde geliyor.',
               ),
               const Spacer(),
               const Center(
@@ -62,46 +64,6 @@ class CustomerHomePlaceholder extends ConsumerWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PlaceholderCard extends StatelessWidget {
-  const _PlaceholderCard({required this.icon, required this.title, required this.subtitle});
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: FerogoColors.brand.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: FerogoColors.brand),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(color: FerogoColors.textHigh, fontWeight: FontWeight.w700, fontSize: 15)),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(color: FerogoColors.textMid, fontSize: 13)),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );

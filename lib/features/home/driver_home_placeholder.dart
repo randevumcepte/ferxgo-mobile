@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/theme/app_colors.dart';
+import '../../shared/widgets/soon_card.dart';
 import '../auth/auth_repository.dart';
 
 /// Geçici sürücü dashboard placeholder.
@@ -41,37 +42,18 @@ class DriverHomePlaceholder extends ConsumerWidget {
                 style: TextStyle(color: FerogoColors.textLow, fontSize: 14, height: 1.4),
               ),
               const SizedBox(height: 28),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 50, height: 50,
-                        decoration: BoxDecoration(
-                          color: FerogoColors.brand.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(Icons.toggle_off_outlined, color: FerogoColors.brand, size: 28),
-                      ),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Çevrimdışı',
-                              style: TextStyle(color: FerogoColors.textHigh, fontSize: 16, fontWeight: FontWeight.w700),
-                            ),
-                            SizedBox(height: 4),
-                            Text('Aç düğmesi sonraki turda gelecek.',
-                              style: TextStyle(color: FerogoColors.textMid, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              const SoonCard(
+                icon: Icons.toggle_off_outlined,
+                title: 'Çevrimiçi ol',
+                subtitle: 'Müşteri taleplerini almaya başla.',
+                snackBarMessage: 'Çevrimiçi/çevrimdışı toggle Faz 2\'de geliyor.',
+              ),
+              const SizedBox(height: 12),
+              const SoonCard(
+                icon: Icons.history,
+                title: 'Tamamlanan yolculuklar',
+                subtitle: 'Kazanç özetin ve geçmiş yolculuklar.',
+                snackBarMessage: 'Kazanç ekranı Faz 2\'de geliyor.',
               ),
               const Spacer(),
               const Center(

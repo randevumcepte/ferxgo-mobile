@@ -155,16 +155,31 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                 ),
                 const SizedBox(height: 12),
                 Center(
-                  child: Text.rich(
-                    TextSpan(
-                      style: const TextStyle(color: FerogoColors.textLow, fontSize: 13),
-                      children: [
-                        const TextSpan(text: 'Henüz hesabın yok mu? '),
-                        TextSpan(
-                          text: 'Sürücü olarak başvur',
-                          style: const TextStyle(color: FerogoColors.brand, fontWeight: FontWeight.w700),
-                        ),
-                      ],
+                  child: TextButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context)
+                        ..clearSnackBars()
+                        ..showSnackBar(const SnackBar(
+                          content: Text('Başvuru için web sitemizdeki "Sürücü Olun" sayfasını kullan.'),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: FerogoColors.inkMuted,
+                        ));
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: FerogoColors.brand,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    child: const Text.rich(
+                      TextSpan(
+                        style: TextStyle(color: FerogoColors.textLow, fontSize: 13),
+                        children: [
+                          TextSpan(text: 'Henüz hesabın yok mu? '),
+                          TextSpan(
+                            text: 'Sürücü olarak başvur',
+                            style: TextStyle(color: FerogoColors.brand, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
