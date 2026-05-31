@@ -73,18 +73,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return loc == AppRoutes.modeSelect ? null : AppRoutes.modeSelect;
       }
 
-      // Mod var, login yok
+      // Mod var, login yok — uygun login ekranına yönlendir.
+      // Not: modeSelect ALLOWED değil — kullanıcı mod seçtiğinde derhal
+      // login akışına geçer. Mod değiştirmek isterse appModeController.clear()
+      // (örn. login ekranındaki "geri" butonu) çağrılır → appMode null olur,
+      // yukarıdaki bloktan modeSelect'e atılır.
       final loginEntry = appMode == AppMode.driver
           ? AppRoutes.driverLogin
           : AppRoutes.customerPhone;
 
-      const allowedLoginPages = {
-        AppRoutes.customerPhone,
-        AppRoutes.customerOtp,
-        AppRoutes.driverLogin,
-        AppRoutes.modeSelect, // kullanıcı geri dönüp mod değiştirebilir
-      };
-      if (allowedLoginPages.contains(loc)) return null;
+      // Müşteri akışı: phone ↔ otp arasında geçiş serbest
+      // Sürücü akışı: sadece driverLogin
+      final allowedForCurrentMode = appMode == AppMode.driver
+          ? const {AppRoutes.driverLogin}
+          : const {AppRoutes.customerPhone, AppRoutes.customerOtp};
+
+      if (allowedForCurrentMode.contains(loc)) return null;
       return loginEntry;
     },
     routes: [

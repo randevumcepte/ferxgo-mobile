@@ -7,6 +7,7 @@ import '../../../core/api/api_exception.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/error_banner.dart';
+import '../../app_mode/app_mode.dart';
 import '../auth_repository.dart';
 
 class CustomerPhoneScreen extends ConsumerStatefulWidget {
@@ -65,7 +66,10 @@ class _CustomerPhoneScreenState extends ConsumerState<CustomerPhoneScreen> {
       appBar: AppBar(
         backgroundColor: FerogoColors.ink,
         leading: IconButton(
-          onPressed: () => context.go(AppRoutes.modeSelect),
+          onPressed: () async {
+            // Mod seçimine dönmek = modu sıfırla; router otomatik /mode'a atar
+            await ref.read(appModeControllerProvider.notifier).clear();
+          },
           icon: const Icon(Icons.arrow_back),
         ),
       ),
