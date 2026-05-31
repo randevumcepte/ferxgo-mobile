@@ -1,0 +1,96 @@
+import 'package:flutter/foundation.dart';
+
+import 'nearby_driver.dart';
+
+/// `/customer/ride-requests/{publicId}` polling response'unun parse hali.
+@immutable
+class RideStatus {
+  const RideStatus({
+    required this.status,
+    required this.rejectionCount,
+    required this.currentIndex,
+    required this.totalCandidates,
+    required this.secondsRemaining,
+    required this.offeredDriver,
+    required this.acceptedDriver,
+    required this.ridePublicId,
+    required this.arrivedAt,
+    required this.customerConfirmedAt,
+    required this.noShowAt,
+  });
+
+  /// pending | accepted | expired | cancelled
+  final String status;
+  final int rejectionCount;
+  final int currentIndex;
+  final int totalCandidates;
+  final int secondsRemaining;
+  final NearbyDriver? offeredDriver;
+  final NearbyDriver? acceptedDriver;
+  final String? ridePublicId;
+  final DateTime? arrivedAt;
+  final DateTime? customerConfirmedAt;
+  final DateTime? noShowAt;
+
+  bool get isPending   => status == 'pending';
+  bool get isAccepted  => status == 'accepted';
+  bool get isExpired   => status == 'expired';
+  bool get isCancelled => status == 'cancelled';
+  bool get isTerminal  => isExpired || isCancelled;
+
+  /// Sürücü vardı, müşteri henüz "gördüm" demedi
+  bool get awaitingCustomerConfirm =>
+      isAccepted && arrivedAt != null && customerConfirmedAt == null;
+
+  static RideStatus fromJson(Map<String, dynamic> json, {required dynamic fallbackPosition}) {
+    NearbyDriver? parseDriver(Object? raw) {
+      if (raw is! Map) return null;
+      return NearbyDriver.fromJson(Map<String, dynamic>.from(raw), fallback: fallbackPosition);
+    }
+
+    return RideStatus(
+      status: json['status'] as String? ?? 'pending',
+      rejectionCount: ((json['rejection_count'] as num?) ?? 0).toInt(),
+      currentIndex: ((json['current_index'] as num?) ?? 0).toInt(),
+      totalCandidates: ((json['total_candidates'] as num?) ?? 0).toInt(),
+      secondsRemaining: ((json['seconds_remaining'] as num?) ?? 0).toInt(),
+      offeredDriver: parseDriver(json['offered_driver']),
+      acceptedDriver: parseDriver(json['accepted_driver']),
+      ridePublicId: json['ride_public_id'] as String?,
+      arrivedAt: _parseDate(json['arrived_at']),
+      customerConfirmedAt: _parseDate(json['customer_confirmed_at']),
+      noShowAt: _parseDate(json['no_show_at']),
+    );
+  }
+
+  static DateTime? _parseDate(Object? raw) {
+    if (raw is! String) return null;
+    return DateTime.tryParse(raw);
+  }
+}
+
+@immutable
+class RideMessage {
+  const RideMessage({
+    required this.id,
+    required this.sender, // customer | driver | system
+    required this.body,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String sender;
+  final String body;
+  final DateTime createdAt;
+
+  bool get isCustomer => sender == 'customer';
+  bool get isDriver   => sender == 'driver';
+  bool get isSystem   => sender == 'system';
+
+  static RideMessage fromJson(Map<String, dynamic> json) => RideMessage(
+        id: (json['id'] as num).toInt(),
+        sender: json['sender'] as String,
+        body: json['body'] as String,
+        createdAt: DateTime.parse(json['created_at'] as String),
+      );
+}

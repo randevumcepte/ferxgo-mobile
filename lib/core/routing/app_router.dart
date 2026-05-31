@@ -6,8 +6,11 @@ import '../../features/app_mode/app_mode.dart';
 import '../../features/auth/screens/customer_otp_screen.dart';
 import '../../features/auth/screens/customer_phone_screen.dart';
 import '../../features/auth/screens/driver_login_screen.dart';
+import '../../features/customer/screens/booking_confirm_screen.dart';
 import '../../features/customer/screens/customer_history_screen.dart';
 import '../../features/customer/screens/customer_map_screen.dart';
+import '../../features/customer/screens/dropoff_search_screen.dart';
+import '../../features/customer/screens/ride_tracking_screen.dart';
 import '../../features/home/driver_home_placeholder.dart';
 import '../../features/mode_select/mode_select_screen.dart';
 import '../../features/splash/splash_screen.dart';
@@ -21,9 +24,13 @@ class AppRoutes {
   static const customerPhone  = '/customer/phone';
   static const customerOtp    = '/customer/otp';
   static const driverLogin    = '/driver/login';
-  static const customerHome    = '/customer/home';     // ana ekran (harita)
-  static const customerHistory = '/customer/history';
-  static const driverHome      = '/driver/home';
+  static const customerHome           = '/customer/home';     // ana ekran (harita)
+  static const customerHistory        = '/customer/history';
+  static const customerBookDropoff    = '/customer/book/dropoff';
+  static const customerBookConfirm    = '/customer/book/confirm';
+  /// Tracking URL: `$customerRideBase/$publicId`
+  static const customerRideBase       = '/customer/ride';
+  static const driverHome             = '/driver/home';
 }
 
 /// Router auth state ve mod seçimini watch eder, ona göre redirect yapar.
@@ -104,10 +111,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return CustomerOtpScreen(phone: phone);
         },
       ),
-      GoRoute(path: AppRoutes.driverLogin,    builder: (_, _) => const DriverLoginScreen()),
-      GoRoute(path: AppRoutes.customerHome,   builder: (_, _) => const CustomerMapScreen()),
-      GoRoute(path: AppRoutes.customerHistory,builder: (_, _) => const CustomerHistoryScreen()),
-      GoRoute(path: AppRoutes.driverHome,     builder: (_, _) => const DriverHomePlaceholder()),
+      GoRoute(path: AppRoutes.driverLogin,         builder: (_, _) => const DriverLoginScreen()),
+      GoRoute(path: AppRoutes.customerHome,        builder: (_, _) => const CustomerMapScreen()),
+      GoRoute(path: AppRoutes.customerHistory,     builder: (_, _) => const CustomerHistoryScreen()),
+      GoRoute(path: AppRoutes.customerBookDropoff, builder: (_, _) => const DropoffSearchScreen()),
+      GoRoute(path: AppRoutes.customerBookConfirm, builder: (_, _) => const BookingConfirmScreen()),
+      GoRoute(
+        path: '${AppRoutes.customerRideBase}/:publicId',
+        builder: (_, state) => RideTrackingScreen(
+          publicId: state.pathParameters['publicId']!,
+        ),
+      ),
+      GoRoute(path: AppRoutes.driverHome,          builder: (_, _) => const DriverHomePlaceholder()),
     ],
   );
 });

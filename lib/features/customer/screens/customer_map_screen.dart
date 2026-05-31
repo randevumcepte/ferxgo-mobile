@@ -12,6 +12,8 @@ import '../../../shared/widgets/error_banner.dart';
 import '../../auth/auth_repository.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
+import '../models/place.dart';
+import '../state/booking_draft.dart';
 
 class CustomerMapScreen extends ConsumerStatefulWidget {
   const CustomerMapScreen({super.key});
@@ -51,9 +53,29 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
           _locationError = null;
         });
         _map.move(position, 14);
+        // Booking draft'a pickup'ı yaz — onay ekranında kullanılacak
+        ref.read(bookingDraftProvider.notifier).setPickupFromPosition(position);
       case LocationError(:final reason):
         setState(() => _locationError = reason.userMessage);
     }
+  }
+
+  void _startBooking() {
+    if (!_hasFix) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(const SnackBar(
+          content: Text('Önce konumunu paylaş, sonra rota seçebiliriz.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: FerogoColors.inkMuted,
+        ));
+      return;
+    }
+    // Pickup'ı garantiye al
+    ref.read(bookingDraftProvider.notifier).setPickup(
+      Place(position: _center, displayName: 'Mevcut konumum'),
+    );
+    context.push(AppRoutes.customerBookDropoff);
   }
 
   Future<void> _loadDrivers() async {
@@ -230,7 +252,33 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
+                    // BÜYÜK CTA — rezervasyon flow'u buradan başlar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Material(
+                        color: FerogoColors.inkMuted,
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          onTap: _startBooking,
+                          borderRadius: BorderRadius.circular(14),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                            child: Row(
+                              children: [
+                                Icon(Icons.search, color: FerogoColors.textMid),
+                                SizedBox(width: 10),
+                                Expanded(child: Text('Nereye gidiyorsun?',
+                                  style: TextStyle(color: FerogoColors.textHigh, fontWeight: FontWeight.w600),
+                                )),
+                                Icon(Icons.arrow_forward, color: FerogoColors.brand, size: 18),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     Expanded(
                       child: _buildList(controller),
                     ),
@@ -282,13 +330,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
         driver: list[i],
         onTap: () {
           _map.move(list[i].position, 16);
-          ScaffoldMessenger.of(context)
-            ..clearSnackBars()
-            ..showSnackBar(SnackBar(
-              content: Text('${list[i].fullName} · talep akışı sonraki adımda.'),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: FerogoColors.inkMuted,
-            ));
+          _startBooking();
         },
       ),
       separatorBuilder: (_, _) => const SizedBox(height: 8),
