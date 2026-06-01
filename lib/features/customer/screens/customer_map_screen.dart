@@ -122,123 +122,117 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
           ),
         ],
       ),
-      body: Stack(
+      body: Column(
         children: [
-          FlutterMap(
-            mapController: _map,
-            options: MapOptions(
-              initialCenter: _center,
-              initialZoom: 13,
-              minZoom: 9,
-              maxZoom: 18,
-              interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-              ),
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.ferogo.ferogo_mobile',
-                maxZoom: 19,
-              ),
-              if (_hasFix)
-                MarkerLayer(markers: [
-                  Marker(
-                    point: _center,
-                    width: 36, height: 36,
-                    child: const _MeMarker(),
-                  ),
-                ]),
-              if (_result != null)
-                MarkerLayer(
-                  markers: _result!.drivers.map((d) => Marker(
-                    point: d.position,
-                    width: 60, height: 60,
-                    child: _DriverPinIcon(driver: d),
-                  )).toList(growable: false),
-                ),
-            ],
-          ),
-
-          // Üst bilgi rozetleri
-          Positioned(
-            left: 12, right: 12, top: 12,
-            child: Row(
+          // ─── ÜST YARI: HARITA ─────────────────────────────
+          Expanded(
+            flex: 1,
+            child: Stack(
               children: [
-                if (_locationError != null)
-                  Expanded(child: ErrorBanner(
-                    message: _locationError!,
-                    onClose: () => setState(() => _locationError = null),
-                  ))
-                else
-                  _StatusChip(
-                    icon: _hasFix ? Icons.my_location : Icons.location_searching,
-                    text: _hasFix
-                        ? 'Konumun alındı'
-                        : 'Konum aranıyor…',
+                FlutterMap(
+                  mapController: _map,
+                  options: MapOptions(
+                    initialCenter: _center,
+                    initialZoom: 13,
+                    minZoom: 9,
+                    maxZoom: 18,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                    ),
                   ),
-                const Spacer(),
-                if (_result != null)
-                  _StatusChip(
-                    icon: Icons.local_taxi,
-                    text: '${_result!.totalOnline} çevrimiçi',
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.ferogo.ferogo_mobile',
+                      maxZoom: 19,
+                    ),
+                    if (_hasFix)
+                      MarkerLayer(markers: [
+                        Marker(
+                          point: _center,
+                          width: 36, height: 36,
+                          child: const _MeMarker(),
+                        ),
+                      ]),
+                    if (_result != null)
+                      MarkerLayer(
+                        markers: _result!.drivers.map((d) => Marker(
+                          point: d.position,
+                          width: 60, height: 60,
+                          child: _DriverPinIcon(driver: d),
+                        )).toList(growable: false),
+                      ),
+                  ],
+                ),
+
+                // Üst bilgi rozetleri
+                Positioned(
+                  left: 12, right: 12, top: 12,
+                  child: Row(
+                    children: [
+                      if (_locationError != null)
+                        Expanded(child: ErrorBanner(
+                          message: _locationError!,
+                          onClose: () => setState(() => _locationError = null),
+                        ))
+                      else
+                        _StatusChip(
+                          icon: _hasFix ? Icons.my_location : Icons.location_searching,
+                          text: _hasFix ? 'Konumun alındı' : 'Konum aranıyor…',
+                        ),
+                      const Spacer(),
+                      if (_result != null)
+                        _StatusChip(
+                          icon: Icons.local_taxi,
+                          text: '${_result!.totalOnline} çevrimiçi',
+                        ),
+                    ],
                   ),
+                ),
+
+                // Sağ alt: tekrar konum butonu (harita yarısının altında)
+                Positioned(
+                  right: 12, bottom: 12,
+                  child: FloatingActionButton.small(
+                    heroTag: 'me-btn',
+                    backgroundColor: FerogoColors.inkMuted,
+                    foregroundColor: FerogoColors.brand,
+                    onPressed: () async {
+                      await _resolveLocation();
+                      await _loadDrivers();
+                    },
+                    child: const Icon(Icons.my_location),
+                  ),
+                ),
               ],
             ),
           ),
 
-          // Sağ alt: tekrar konum butonu
-          Positioned(
-            right: 12, bottom: 220,
-            child: FloatingActionButton.small(
-              heroTag: 'me-btn',
-              backgroundColor: FerogoColors.inkMuted,
-              foregroundColor: FerogoColors.brand,
-              onPressed: () async {
-                await _resolveLocation();
-                await _loadDrivers();
-              },
-              child: const Icon(Icons.my_location),
-            ),
-          ),
-
-          // Alt sheet: yakındaki sürücüler listesi
-          DraggableScrollableSheet(
-            initialChildSize: 0.32,
-            minChildSize: 0.18,
-            maxChildSize: 0.85,
-            builder: (ctx, controller) {
-              return Container(
-                decoration: const BoxDecoration(
-                  color: FerogoColors.inkSoft,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                  border: Border(
-                    top: BorderSide(color: FerogoColors.line),
-                    left: BorderSide(color: FerogoColors.line),
-                    right: BorderSide(color: FerogoColors.line),
-                  ),
-                ),
+          // ─── ALT YARI: SABİT PANEL (inputlar + sürücü listesi) ─
+          Expanded(
+            flex: 1,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: FerogoColors.inkSoft,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                border: Border(top: BorderSide(color: FerogoColors.line)),
+              ),
+              child: SafeArea(
+                top: false,
                 child: Column(
                   children: [
-                    const SizedBox(height: 10),
-                    Container(
-                      width: 36, height: 4,
-                      decoration: BoxDecoration(
-                        color: FerogoColors.line,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
+                    // Başlık + yenile
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
                         children: [
                           Expanded(
                             child: Text(
-                              user != null ? 'Selam ${user.name.split(' ').first}' : 'Yakındaki sürücüler',
+                              user != null ? 'Selam ${user.name.split(' ').first}' : 'Hoş geldin',
                               style: const TextStyle(
                                 color: FerogoColors.textHigh,
-                                fontSize: 20, fontWeight: FontWeight.w800,
+                                fontSize: 18, fontWeight: FontWeight.w800,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -251,55 +245,43 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                           else
                             IconButton(
                               onPressed: _loadDrivers,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                               icon: const Icon(Icons.refresh, color: FerogoColors.textMid),
                             ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 10),
-                    // BÜYÜK CTA — rezervasyon flow'u buradan başlar
+                    // İki input: pickup (readonly) + dropoff (tıklanır)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Material(
-                        color: FerogoColors.inkMuted,
-                        borderRadius: BorderRadius.circular(14),
-                        child: InkWell(
-                          onTap: _startBooking,
-                          borderRadius: BorderRadius.circular(14),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                            child: Row(
-                              children: [
-                                Icon(Icons.search, color: FerogoColors.textMid),
-                                SizedBox(width: 10),
-                                Expanded(child: Text('Nereye gidiyorsun?',
-                                  style: TextStyle(color: FerogoColors.textHigh, fontWeight: FontWeight.w600),
-                                )),
-                                Icon(Icons.arrow_forward, color: FerogoColors.brand, size: 18),
-                              ],
-                            ),
-                          ),
-                        ),
+                      child: _AddressInputs(
+                        pickupLabel: _hasFix ? 'Mevcut konumum' : 'Konum aranıyor…',
+                        onPickupTap: () async {
+                          await _resolveLocation();
+                          await _loadDrivers();
+                        },
+                        onDropoffTap: _startBooking,
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Expanded(
-                      child: _buildList(controller),
-                    ),
+                    // Sürücü listesi (kalan alan)
+                    Expanded(child: _buildList(null)),
                   ],
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildList(ScrollController c) {
+  Widget _buildList(ScrollController? c) {
     if (_driversError != null) {
       return ListView(controller: c, padding: const EdgeInsets.all(16), children: [
-        ErrorBanner(message: 'Sürücüler yüklenemedi. Tekrar dene.', onClose: () => setState(() => _driversError = null)),
+        ErrorBanner(message: _driversError ?? 'Sürücüler yüklenemedi.', onClose: () => setState(() => _driversError = null)),
         const SizedBox(height: 12),
         FilledButton(onPressed: _loadDrivers, child: const Text('Yeniden yükle')),
       ]);
@@ -329,7 +311,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
 
     return ListView.separated(
       controller: c,
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
       itemBuilder: (_, i) => _DriverTile(
         driver: list[i],
         onTap: () {
@@ -339,6 +321,100 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       ),
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemCount: list.length,
+    );
+  }
+}
+
+// ─── İki input alanı: pickup (readonly) + dropoff (tıklanır) ──
+class _AddressInputs extends StatelessWidget {
+  const _AddressInputs({
+    required this.pickupLabel,
+    required this.onPickupTap,
+    required this.onDropoffTap,
+  });
+
+  final String pickupLabel;
+  final VoidCallback onPickupTap;
+  final VoidCallback onDropoffTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: FerogoColors.inkMuted,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: FerogoColors.line),
+      ),
+      child: Column(
+        children: [
+          // PICKUP
+          _Row(
+            dotColor: FerogoColors.brand,
+            placeholder: pickupLabel,
+            isEmpty: false,
+            trailing: const Icon(Icons.my_location, color: FerogoColors.textLow, size: 18),
+            onTap: onPickupTap,
+          ),
+          const Divider(height: 1, color: FerogoColors.line, indent: 16, endIndent: 16),
+          // DROPOFF
+          _Row(
+            dotColor: FerogoColors.danger,
+            placeholder: 'Nereye gidiyorsun?',
+            isEmpty: true,
+            trailing: const Icon(Icons.arrow_forward, color: FerogoColors.brand, size: 18),
+            onTap: onDropoffTap,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  const _Row({
+    required this.dotColor,
+    required this.placeholder,
+    required this.isEmpty,
+    required this.trailing,
+    required this.onTap,
+  });
+
+  final Color dotColor;
+  final String placeholder;
+  final bool isEmpty;
+  final Widget trailing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 10, height: 10,
+              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                placeholder,
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isEmpty ? FerogoColors.textLow : FerogoColors.textHigh,
+                  fontWeight: isEmpty ? FontWeight.w500 : FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            trailing,
+          ],
+        ),
+      ),
     );
   }
 }
