@@ -54,6 +54,30 @@ class CustomerRideRepository {
     return (res['driver'] as Map?)?.cast<String, dynamic>() ?? const {};
   }
 
+  // ─── Favori sürücüler ("tekrar onu çağır") ────────────────
+  Future<List<NearbyDriver>> favorites() async {
+    final res = await _api.getJson('/customer/favorites');
+    return (res['drivers'] as List? ?? const [])
+        .whereType<Map>()
+        .map((m) => NearbyDriver.fromJson(
+              Map<String, dynamic>.from(m),
+              fallback: const LatLng(38.4237, 27.1428), // İzmir merkez
+            ))
+        .toList(growable: false);
+  }
+
+  /// Favoriye ekle. Backend `favorited: true/false` döner.
+  Future<bool> addFavorite(int driverId) async {
+    final res = await _api.postJson('/customer/favorites/$driverId');
+    return (res['favorited'] as bool?) ?? true;
+  }
+
+  /// Favoriden çıkar.
+  Future<bool> removeFavorite(int driverId) async {
+    final res = await _api.deleteJson('/customer/favorites/$driverId');
+    return (res['favorited'] as bool?) ?? false;
+  }
+
   // ─── Yer arama (Nominatim proxy) ──────────────────────────
   Future<List<Place>> searchPlaces(String q) async {
     final trimmed = q.trim();

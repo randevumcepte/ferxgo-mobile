@@ -20,6 +20,10 @@ class NearbyDriver {
     required this.distanceKm,
     required this.etaMinutes,
     required this.position,
+    this.isFavorite = false,
+    this.favoriteCount = 0,
+    this.isFemale = false,
+    this.womenOnly = false,
   });
 
   final int id;
@@ -36,6 +40,14 @@ class NearbyDriver {
   final String? plate;
   final double distanceKm;
   final int etaMinutes;
+
+  /// Favori / sosyal kanıt
+  final bool isFavorite;
+  final int favoriteCount;
+
+  /// Kadın sürücü güvenliği
+  final bool isFemale;
+  final bool womenOnly;
 
   /// Sürücünün GPS konumu — harita marker'ı için. Nearby endpoint şu an
   /// sürücünün koordinatlarını dönmüyor (sadece distance/eta) — bu yüzden
@@ -61,6 +73,34 @@ class NearbyDriver {
       etaMinutes: ((json['eta_minutes'] as num?) ?? 0).toInt(),
       // Backend lat/lng dönerse o, yoksa kullanıcı konumundan offset ile yaklaşıklık
       position: _resolvePosition(json, fallback),
+      isFavorite: (json['is_favorite'] as bool?) ?? false,
+      favoriteCount: ((json['favorite_count'] as num?) ?? 0).toInt(),
+      isFemale: (json['is_female'] as bool?) ?? false,
+      womenOnly: (json['women_only'] as bool?) ?? false,
+    );
+  }
+
+  NearbyDriver copyWith({bool? isFavorite, int? favoriteCount}) {
+    return NearbyDriver(
+      id: id,
+      name: name,
+      fullName: fullName,
+      avatar: avatar,
+      rating: rating,
+      trips: trips,
+      vehicleClass: vehicleClass,
+      vehicleClassSlug: vehicleClassSlug,
+      vehicleLabel: vehicleLabel,
+      vehicleYear: vehicleYear,
+      vehicleColor: vehicleColor,
+      plate: plate,
+      distanceKm: distanceKm,
+      etaMinutes: etaMinutes,
+      position: position,
+      isFavorite: isFavorite ?? this.isFavorite,
+      favoriteCount: favoriteCount ?? this.favoriteCount,
+      isFemale: isFemale,
+      womenOnly: womenOnly,
     );
   }
 
