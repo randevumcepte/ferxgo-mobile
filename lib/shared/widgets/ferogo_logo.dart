@@ -2,42 +2,45 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 
-/// Ferogo wordmark — splash, login üst başlıkları için.
-/// Asset eklenince image versiyonuna geçilecek; şu an typo-mark.
+/// FerXGo wordmark — splash, login üst başlıkları için.
+/// Fer (beyaz) · X (altın, italik, büyük) · Go (beyaz).
+/// Asset eklenince image versiyonuna geçilebilir; şu an typo-mark.
 class FerogoLogo extends StatelessWidget {
-  const FerogoLogo({super.key, this.size = 32, this.color, this.dotColor});
+  const FerogoLogo({super.key, this.size = 32, this.color, this.xColor});
 
   final double size;
+
+  /// "Fer" ve "Go" rengi (varsayılan: beyaz/yüksek kontrast).
   final Color? color;
-  final Color? dotColor;
+
+  /// Ortadaki "X" rengi (varsayılan: marka altın).
+  final Color? xColor;
 
   @override
   Widget build(BuildContext context) {
-    final c    = color ?? FerogoColors.textHigh;
-    final dot  = dotColor ?? FerogoColors.brand;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          'ferogo',
-          style: TextStyle(
-            color: c,
-            fontSize: size,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1.2,
-            height: 1.0,
-          ),
+    final base = color ?? FerogoColors.textHigh;
+    final x    = xColor ?? FerogoColors.brand;
+    return Text.rich(
+      TextSpan(
+        style: TextStyle(
+          fontSize: size,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -1.0,
+          height: 1.0,
         ),
-        Padding(
-          padding: EdgeInsets.only(left: size * 0.08, bottom: size * 0.12),
-          child: Container(
-            width: size * 0.18,
-            height: size * 0.18,
-            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+        children: [
+          TextSpan(text: 'Fer', style: TextStyle(color: base)),
+          TextSpan(
+            text: 'X',
+            style: TextStyle(
+              color: x,
+              fontStyle: FontStyle.italic,
+              fontSize: size * 1.22, // "A" oranı: X, gövdeden ~%22 büyük
+            ),
           ),
-        ),
-      ],
+          TextSpan(text: 'Go', style: TextStyle(color: base)),
+        ],
+      ),
     );
   }
 }

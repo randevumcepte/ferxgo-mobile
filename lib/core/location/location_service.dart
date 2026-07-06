@@ -72,7 +72,7 @@ extension LocationFailReasonX on LocationFailReason {
         LocationFailReason.denied =>
           'Konum izni vermediğin için yakındaki sürücüleri gösteremedik.',
         LocationFailReason.deniedForever =>
-          'Konum izni kalıcı reddedilmiş. Ayarlar > Uygulamalar > Ferogo bölümünden izin ver.',
+          'Konum izni kalıcı reddedilmiş. Ayarlar > Uygulamalar > FerXGo bölümünden izin ver.',
         LocationFailReason.timeout =>
           'Konum alınamadı, ağ ve GPS sinyalini kontrol et.',
       };
