@@ -9,7 +9,7 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/device/device_id.dart';
 
-/// Ferogo mobil auth katmanı — backend Mobile API ile konuşur.
+/// FerXGo mobil auth katmanı — backend Mobile API ile konuşur.
 class AuthRepository {
   AuthRepository(this._api, this._ref);
 

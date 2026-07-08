@@ -66,9 +66,9 @@ class _DropoffSearchScreenState extends ConsumerState<DropoffSearchScreen> {
     final pickup = ref.watch(bookingDraftProvider).pickup;
 
     return Scaffold(
-      backgroundColor: FerogoColors.ink,
+      backgroundColor: FerxgoColors.ink,
       appBar: AppBar(
-        backgroundColor: FerogoColors.ink,
+        backgroundColor: FerxgoColors.ink,
         title: const Text('Nereye gidiyorsun?'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -84,19 +84,19 @@ class _DropoffSearchScreenState extends ConsumerState<DropoffSearchScreen> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: FerogoColors.inkSoft,
+                  color: FerxgoColors.inkSoft,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: FerogoColors.line),
+                  border: Border.all(color: FerxgoColors.line),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.circle, color: FerogoColors.brand, size: 12),
+                    const Icon(Icons.circle, color: FerxgoColors.brand, size: 12),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         pickup?.displayName ?? 'Konumum',
                         maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: FerogoColors.textMid, fontSize: 13),
+                        style: const TextStyle(color: FerxgoColors.textMid, fontSize: 13),
                       ),
                     ),
                   ],
@@ -110,15 +110,15 @@ class _DropoffSearchScreenState extends ConsumerState<DropoffSearchScreen> {
               child: TextField(
                 controller: _ctrl,
                 autofocus: true,
-                style: const TextStyle(color: FerogoColors.textHigh),
+                style: const TextStyle(color: FerxgoColors.textHigh),
                 onChanged: _onChanged,
                 decoration: InputDecoration(
                   hintText: 'Adres, mahalle, AVM…',
-                  prefixIcon: const Icon(Icons.search, color: FerogoColors.textLow),
+                  prefixIcon: const Icon(Icons.search, color: FerxgoColors.textLow),
                   suffixIcon: _ctrl.text.isEmpty
                       ? null
                       : IconButton(
-                          icon: const Icon(Icons.close, color: FerogoColors.textLow),
+                          icon: const Icon(Icons.close, color: FerxgoColors.textLow),
                           onPressed: () {
                             _ctrl.clear();
                             setState(() => _results = const []);
@@ -133,8 +133,8 @@ class _DropoffSearchScreenState extends ConsumerState<DropoffSearchScreen> {
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: LinearProgressIndicator(
                   minHeight: 2,
-                  color: FerogoColors.brand,
-                  backgroundColor: FerogoColors.inkMuted,
+                  color: FerxgoColors.brand,
+                  backgroundColor: FerxgoColors.inkMuted,
                 ),
               ),
 
@@ -151,7 +151,7 @@ class _DropoffSearchScreenState extends ConsumerState<DropoffSearchScreen> {
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Text(_error!,
-            style: const TextStyle(color: FerogoColors.danger),
+            style: const TextStyle(color: FerxgoColors.danger),
             textAlign: TextAlign.center,
           ),
         ),
@@ -163,7 +163,7 @@ class _DropoffSearchScreenState extends ConsumerState<DropoffSearchScreen> {
           padding: EdgeInsets.all(24),
           child: Text(
             'Aramaya başla — örn. "Konak Pier"',
-            style: TextStyle(color: FerogoColors.textLow),
+            style: TextStyle(color: FerxgoColors.textLow),
           ),
         ),
       );
@@ -172,24 +172,24 @@ class _DropoffSearchScreenState extends ConsumerState<DropoffSearchScreen> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: Text('Sonuç yok', style: TextStyle(color: FerogoColors.textLow)),
+          child: Text('Sonuç yok', style: TextStyle(color: FerxgoColors.textLow)),
         ),
       );
     }
     return ListView.separated(
       itemCount: _results.length,
-      separatorBuilder: (_, _) => const Divider(height: 1, color: FerogoColors.line),
+      separatorBuilder: (_, _) => const Divider(height: 1, color: FerxgoColors.line),
       itemBuilder: (_, i) => ListTile(
-        leading: const Icon(Icons.place, color: FerogoColors.brand),
+        leading: const Icon(Icons.place, color: FerxgoColors.brand),
         title: Text(_results[i].shortName,
           maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: FerogoColors.textHigh, fontWeight: FontWeight.w600),
+          style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w600),
         ),
         subtitle: _results[i].secondaryName.isEmpty
             ? null
             : Text(_results[i].secondaryName,
                 maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: FerogoColors.textLow, fontSize: 12),
+                style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
               ),
         onTap: () => _pick(_results[i]),
       ),

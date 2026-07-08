@@ -137,16 +137,16 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: FerogoColors.inkSoft,
-        title: const Text('Talebi iptal et?', style: TextStyle(color: FerogoColors.textHigh)),
+        backgroundColor: FerxgoColors.inkSoft,
+        title: const Text('Talebi iptal et?', style: TextStyle(color: FerxgoColors.textHigh)),
         content: const Text(
           'Sürücü bulma süreci durdurulacak. Onaylıyor musun?',
-          style: TextStyle(color: FerogoColors.textMid),
+          style: TextStyle(color: FerxgoColors.textMid),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Vazgeç')),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: FerogoColors.danger, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(backgroundColor: FerxgoColors.danger, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('İptal et'),
           ),
@@ -183,9 +183,9 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     final s = _status;
 
     return Scaffold(
-      backgroundColor: FerogoColors.ink,
+      backgroundColor: FerxgoColors.ink,
       appBar: AppBar(
-        backgroundColor: FerogoColors.ink,
+        backgroundColor: FerxgoColors.ink,
         title: const Text('Yolculuk'),
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -194,7 +194,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
       ),
       body: SafeArea(
         child: s == null
-            ? const Center(child: CircularProgressIndicator(color: FerogoColors.brand))
+            ? const Center(child: CircularProgressIndicator(color: FerxgoColors.brand))
             : _build(s),
       ),
     );
@@ -208,7 +208,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
         message: 'Çevredeki sürücüler talebini cevaplamadı.\nTekrar deneyebilirsin.',
         ctaText: 'Ana ekrana dön',
         onTap: () => context.go(AppRoutes.customerHome),
-        color: FerogoColors.warning,
+        color: FerxgoColors.warning,
       );
     }
     if (s.isCancelled) {
@@ -218,7 +218,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
         message: 'Talebin iptal edildi.',
         ctaText: 'Ana ekrana dön',
         onTap: () => context.go(AppRoutes.customerHome),
-        color: FerogoColors.danger,
+        color: FerxgoColors.danger,
       );
     }
     if (s.isPending) {
@@ -285,11 +285,11 @@ class _Pending extends StatelessWidget {
                   CircularProgressIndicator(
                     value: percentLeft,
                     strokeWidth: 5,
-                    backgroundColor: FerogoColors.inkMuted,
-                    color: FerogoColors.brand,
+                    backgroundColor: FerxgoColors.inkMuted,
+                    color: FerxgoColors.brand,
                   ),
                   Text('${status.secondsRemaining}',
-                    style: const TextStyle(color: FerogoColors.brand, fontSize: 22, fontWeight: FontWeight.w800),
+                    style: const TextStyle(color: FerxgoColors.brand, fontSize: 22, fontWeight: FontWeight.w800),
                   ),
                 ]),
               ),
@@ -301,7 +301,7 @@ class _Pending extends StatelessWidget {
                 ? 'Teklif gönderildi: ${status.offeredDriver!.name}'
                 : 'Sürücü aranıyor…',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: FerogoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w700),
+            style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
@@ -309,17 +309,17 @@ class _Pending extends StatelessWidget {
                 ? 'Aday ${status.currentIndex + 1}/${status.totalCandidates}'
                 : 'Çevredeki sürücülere haber veriliyor.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: FerogoColors.textLow, fontSize: 13),
+            style: const TextStyle(color: FerxgoColors.textLow, fontSize: 13),
           ),
           const Spacer(),
           if (error != null) ErrorBanner(message: error!, onClose: onErrorClose),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: onCancel,
-            icon: const Icon(Icons.close, color: FerogoColors.danger),
-            label: const Text('Talebi iptal et', style: TextStyle(color: FerogoColors.danger)),
+            icon: const Icon(Icons.close, color: FerxgoColors.danger),
+            label: const Text('Talebi iptal et', style: TextStyle(color: FerxgoColors.danger)),
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: FerogoColors.danger),
+              side: const BorderSide(color: FerxgoColors.danger),
               minimumSize: const Size(double.infinity, 50),
             ),
           ),
@@ -387,14 +387,14 @@ class _Accepted extends StatelessWidget {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.ferogo.ferogo_mobile',
+              userAgentPackageName: 'com.ferxgo',
               maxZoom: 19,
             ),
             MarkerLayer(markers: [
               Marker(
                 point: driver.position,
                 width: 60, height: 60,
-                child: const Icon(Icons.local_taxi, color: FerogoColors.brand, size: 36),
+                child: const Icon(Icons.local_taxi, color: FerxgoColors.brand, size: 36),
               ),
             ]),
           ],
@@ -418,21 +418,21 @@ class _Accepted extends StatelessWidget {
           maxChildSize: 0.85,
           builder: (ctx, sc) => Container(
             decoration: const BoxDecoration(
-              color: FerogoColors.inkSoft,
+              color: FerxgoColors.inkSoft,
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               border: Border(
-                top: BorderSide(color: FerogoColors.line),
-                left: BorderSide(color: FerogoColors.line),
-                right: BorderSide(color: FerogoColors.line),
+                top: BorderSide(color: FerxgoColors.line),
+                left: BorderSide(color: FerxgoColors.line),
+                right: BorderSide(color: FerxgoColors.line),
               ),
             ),
             child: Column(
               children: [
                 const SizedBox(height: 10),
-                Container(width: 36, height: 4, decoration: BoxDecoration(color: FerogoColors.line, borderRadius: BorderRadius.circular(2))),
+                Container(width: 36, height: 4, decoration: BoxDecoration(color: FerxgoColors.line, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 12),
                 _DriverHeader(driver: driver, onChat: onToggleChat, chatOpen: chatOpen),
-                const Divider(color: FerogoColors.line, height: 24),
+                const Divider(color: FerxgoColors.line, height: 24),
 
                 if (error != null) Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -474,16 +474,16 @@ class _StatusStrip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: FerogoColors.ink.withValues(alpha: 0.92),
+        color: FerxgoColors.ink.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: FerogoColors.line),
+        border: Border.all(color: FerxgoColors.line),
       ),
       child: Row(
         children: [
-          const Icon(Icons.directions_car_filled, color: FerogoColors.brand, size: 18),
+          const Icon(Icons.directions_car_filled, color: FerxgoColors.brand, size: 18),
           const SizedBox(width: 8),
           Expanded(child: Text(text,
-            style: const TextStyle(color: FerogoColors.textHigh, fontWeight: FontWeight.w700, fontSize: 13),
+            style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w700, fontSize: 13),
           )),
         ],
       ),
@@ -506,11 +506,11 @@ class _DriverHeader extends StatelessWidget {
           Container(
             width: 52, height: 52,
             decoration: BoxDecoration(
-              color: FerogoColors.brand.withValues(alpha: 0.16),
+              color: FerxgoColors.brand.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(26),
             ),
             alignment: Alignment.center,
-            child: const Icon(Icons.person, color: FerogoColors.brand),
+            child: const Icon(Icons.person, color: FerxgoColors.brand),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -518,7 +518,7 @@ class _DriverHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(driver.fullName,
-                  style: const TextStyle(color: FerogoColors.textHigh, fontSize: 17, fontWeight: FontWeight.w800),
+                  style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 17, fontWeight: FontWeight.w800),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
@@ -527,7 +527,7 @@ class _DriverHeader extends StatelessWidget {
                     if (driver.vehicleClass != null) driver.vehicleClass,
                     if (driver.plate != null) driver.plate,
                   ].whereType<String>().join(' · '),
-                  style: const TextStyle(color: FerogoColors.textMid, fontSize: 12),
+                  style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -581,9 +581,9 @@ class _ActionsPanel extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Row(
               children: [
-                Icon(Icons.check, color: FerogoColors.success),
+                Icon(Icons.check, color: FerxgoColors.success),
                 SizedBox(width: 8),
-                Text('Buluştun, yolculuk başladı.', style: TextStyle(color: FerogoColors.textMid)),
+                Text('Buluştun, yolculuk başladı.', style: TextStyle(color: FerxgoColors.textMid)),
               ],
             ),
           ),
@@ -592,8 +592,8 @@ class _ActionsPanel extends StatelessWidget {
           icon: const Icon(Icons.close),
           label: const Text('Talebi iptal et'),
           style: OutlinedButton.styleFrom(
-            foregroundColor: FerogoColors.danger,
-            side: const BorderSide(color: FerogoColors.danger),
+            foregroundColor: FerxgoColors.danger,
+            side: const BorderSide(color: FerxgoColors.danger),
             minimumSize: const Size(double.infinity, 50),
           ),
         ),
@@ -613,7 +613,7 @@ class _ChatPanel extends StatelessWidget {
       return const Center(child: Padding(
         padding: EdgeInsets.all(20),
         child: Text('Sürücüyle iletişim için ilk mesajını yaz.',
-          style: TextStyle(color: FerogoColors.textLow), textAlign: TextAlign.center,
+          style: TextStyle(color: FerxgoColors.textLow), textAlign: TextAlign.center,
         ),
       ));
     }
@@ -632,10 +632,10 @@ class _ChatPanel extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: m.isSystem
-                  ? FerogoColors.inkMuted
+                  ? FerxgoColors.inkMuted
                   : isMe
-                      ? FerogoColors.brand
-                      : FerogoColors.inkMuted,
+                      ? FerxgoColors.brand
+                      : FerxgoColors.inkMuted,
               borderRadius: BorderRadius.circular(12),
             ),
             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
@@ -643,13 +643,13 @@ class _ChatPanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(m.body, style: TextStyle(
-                  color: isMe ? Colors.black : FerogoColors.textHigh,
+                  color: isMe ? Colors.black : FerxgoColors.textHigh,
                   fontSize: 14,
                 )),
                 const SizedBox(height: 2),
                 Text(df.format(m.createdAt.toLocal()),
                   style: TextStyle(
-                    color: isMe ? Colors.black54 : FerogoColors.textLow,
+                    color: isMe ? Colors.black54 : FerxgoColors.textLow,
                     fontSize: 10,
                   ),
                 ),
@@ -678,7 +678,7 @@ class _MessageInput extends StatelessWidget {
             child: TextField(
               controller: controller,
               minLines: 1, maxLines: 4,
-              style: const TextStyle(color: FerogoColors.textHigh),
+              style: const TextStyle(color: FerxgoColors.textHigh),
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => onSend(),
               decoration: const InputDecoration(
@@ -730,9 +730,9 @@ class _Terminal extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 64),
           const SizedBox(height: 18),
-          Text(title, style: const TextStyle(color: FerogoColors.textHigh, fontSize: 22, fontWeight: FontWeight.w800)),
+          Text(title, style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
-          Text(message, textAlign: TextAlign.center, style: const TextStyle(color: FerogoColors.textMid, height: 1.4)),
+          Text(message, textAlign: TextAlign.center, style: const TextStyle(color: FerxgoColors.textMid, height: 1.4)),
           const SizedBox(height: 28),
           FilledButton(
             onPressed: onTap,

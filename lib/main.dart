@@ -12,21 +12,21 @@ Future<void> main() async {
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
-  runApp(const ProviderScope(child: FerogoApp()));
+  runApp(const ProviderScope(child: FerxgoApp()));
 }
 
-class FerogoApp extends ConsumerWidget {
-  const FerogoApp({super.key});
+class FerxgoApp extends ConsumerWidget {
+  const FerxgoApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(
-      title: 'Ferogo',
+      title: 'FerXGo',
       debugShowCheckedModeBanner: false,
-      theme: FerogoTheme.light(),
-      darkTheme: FerogoTheme.dark(),
+      theme: FerxgoTheme.light(),
+      darkTheme: FerxgoTheme.dark(),
       themeMode: ThemeMode.dark, // mobil için varsayılan koyu
       routerConfig: router,
     );

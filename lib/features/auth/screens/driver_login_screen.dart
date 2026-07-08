@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/error_banner.dart';
-import '../../../shared/widgets/ferogo_logo.dart';
+import '../../../shared/widgets/ferxgo_logo.dart';
 import '../../app_mode/app_mode.dart';
 import '../auth_repository.dart';
 
@@ -52,7 +52,7 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: FerogoColors.ink,
+        backgroundColor: FerxgoColors.ink,
         leading: IconButton(
           onPressed: () async {
             await ref.read(appModeControllerProvider.notifier).clear();
@@ -70,18 +70,18 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
               children: [
                 Row(
                   children: [
-                    const FerogoLogo(size: 22),
+                    const FerxgoLogo(size: 22),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: FerogoColors.brand.withValues(alpha: 0.15),
+                        color: FerxgoColors.brand.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
                         'SÜRÜCÜ',
                         style: TextStyle(
-                          color: FerogoColors.brand,
+                          color: FerxgoColors.brand,
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1,
@@ -94,13 +94,13 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                 const Text(
                   'Hoş geldin',
                   style: TextStyle(
-                    color: FerogoColors.textHigh, fontSize: 28, fontWeight: FontWeight.w800,
+                    color: FerxgoColors.textHigh, fontSize: 28, fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Ferogo sürücü hesabınla giriş yap.',
-                  style: TextStyle(color: FerogoColors.textLow, fontSize: 14, height: 1.4),
+                  'FerXGo sürücü hesabınla giriş yap.',
+                  style: TextStyle(color: FerxgoColors.textLow, fontSize: 14, height: 1.4),
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
@@ -108,10 +108,10 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.email],
-                  style: const TextStyle(color: FerogoColors.textHigh),
+                  style: const TextStyle(color: FerxgoColors.textHigh),
                   decoration: const InputDecoration(
                     hintText: 'e-posta',
-                    prefixIcon: Icon(Icons.alternate_email, color: FerogoColors.textLow),
+                    prefixIcon: Icon(Icons.alternate_email, color: FerxgoColors.textLow),
                   ),
                   validator: (v) {
                     final s = (v ?? '').trim();
@@ -126,15 +126,15 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                   obscureText: _obscure,
                   textInputAction: TextInputAction.done,
                   autofillHints: const [AutofillHints.password],
-                  style: const TextStyle(color: FerogoColors.textHigh),
+                  style: const TextStyle(color: FerxgoColors.textHigh),
                   decoration: InputDecoration(
                     hintText: 'şifre',
-                    prefixIcon: const Icon(Icons.lock_outline, color: FerogoColors.textLow),
+                    prefixIcon: const Icon(Icons.lock_outline, color: FerxgoColors.textLow),
                     suffixIcon: IconButton(
                       onPressed: () => setState(() => _obscure = !_obscure),
                       icon: Icon(
                         _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                        color: FerogoColors.textLow,
+                        color: FerxgoColors.textLow,
                       ),
                     ),
                   ),
@@ -162,21 +162,21 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                         ..showSnackBar(const SnackBar(
                           content: Text('Başvuru için web sitemizdeki "Sürücü Olun" sayfasını kullan.'),
                           behavior: SnackBarBehavior.floating,
-                          backgroundColor: FerogoColors.inkMuted,
+                          backgroundColor: FerxgoColors.inkMuted,
                         ));
                     },
                     style: TextButton.styleFrom(
-                      foregroundColor: FerogoColors.brand,
+                      foregroundColor: FerxgoColors.brand,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                     child: const Text.rich(
                       TextSpan(
-                        style: TextStyle(color: FerogoColors.textLow, fontSize: 13),
+                        style: TextStyle(color: FerxgoColors.textLow, fontSize: 13),
                         children: [
                           TextSpan(text: 'Henüz hesabın yok mu? '),
                           TextSpan(
                             text: 'Sürücü olarak başvur',
-                            style: TextStyle(color: FerogoColors.brand, fontWeight: FontWeight.w700),
+                            style: TextStyle(color: FerxgoColors.brand, fontWeight: FontWeight.w700),
                           ),
                         ],
                       ),

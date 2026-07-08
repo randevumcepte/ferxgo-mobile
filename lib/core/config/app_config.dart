@@ -1,10 +1,10 @@
 /// Build-time sabitler. Üretimde `--dart-define` ile override edilebilir:
-///   flutter run --dart-define=FEROGO_API_BASE=https://staging.example.com/api/v1
+///   flutter run --dart-define=FERXGO_API_BASE=https://staging.example.com/api/v1
 class AppConfig {
   AppConfig._();
 
   static const String apiBaseUrl = String.fromEnvironment(
-    'FEROGO_API_BASE',
+    'FERXGO_API_BASE',
     defaultValue: 'https://appnew.randevumcepte.com.tr/api/v1',
   );
 

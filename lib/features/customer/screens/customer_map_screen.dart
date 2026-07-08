@@ -69,7 +69,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
         ..showSnackBar(const SnackBar(
           content: Text('Önce konumunu paylaş, sonra rota seçebiliriz.'),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: FerogoColors.inkMuted,
+          backgroundColor: FerxgoColors.inkMuted,
         ));
       return;
     }
@@ -138,8 +138,8 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
     return Scaffold(
       extendBodyBehindAppBar: false,
       appBar: AppBar(
-        title: const Text('Ferogo'),
-        backgroundColor: FerogoColors.ink,
+        title: const Text('FerXGo'),
+        backgroundColor: FerxgoColors.ink,
         actions: [
           IconButton(
             tooltip: 'Geçmiş yolculuklar',
@@ -174,7 +174,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                   children: [
                     TileLayer(
                       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.ferogo.ferogo_mobile',
+                      userAgentPackageName: 'com.ferxgo',
                       maxZoom: 19,
                     ),
                     if (_hasFix)
@@ -226,8 +226,8 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                   right: 12, bottom: 12,
                   child: FloatingActionButton.small(
                     heroTag: 'me-btn',
-                    backgroundColor: FerogoColors.inkMuted,
-                    foregroundColor: FerogoColors.brand,
+                    backgroundColor: FerxgoColors.inkMuted,
+                    foregroundColor: FerxgoColors.brand,
                     onPressed: () async {
                       await _resolveLocation();
                       await _loadDrivers();
@@ -244,9 +244,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
             flex: 1,
             child: Container(
               decoration: const BoxDecoration(
-                color: FerogoColors.inkSoft,
+                color: FerxgoColors.inkSoft,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                border: Border(top: BorderSide(color: FerogoColors.line)),
+                border: Border(top: BorderSide(color: FerxgoColors.line)),
               ),
               child: SafeArea(
                 top: false,
@@ -262,7 +262,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                             child: Text(
                               user != null ? 'Selam ${user.name.split(' ').first}' : 'Hoş geldin',
                               style: const TextStyle(
-                                color: FerogoColors.textHigh,
+                                color: FerxgoColors.textHigh,
                                 fontSize: 18, fontWeight: FontWeight.w800,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -271,14 +271,14 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                           if (_loadingDrivers)
                             const SizedBox(
                               width: 18, height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: FerogoColors.brand),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: FerxgoColors.brand),
                             )
                           else
                             IconButton(
                               onPressed: _loadDrivers,
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                              icon: const Icon(Icons.refresh, color: FerogoColors.textMid),
+                              icon: const Icon(Icons.refresh, color: FerxgoColors.textMid),
                             ),
                         ],
                       ),
@@ -320,7 +320,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
 
     final all = _result?.drivers ?? const <NearbyDriver>[];
     if (_loadingDrivers && all.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: FerogoColors.brand));
+      return const Center(child: CircularProgressIndicator(color: FerxgoColors.brand));
     }
 
     final list = _womenOnlyFilter ? all.where((d) => d.isFemale).toList() : all;
@@ -338,13 +338,13 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Column(
                       children: [
-                        const Icon(Icons.search_off, color: FerogoColors.textLow, size: 36),
+                        const Icon(Icons.search_off, color: FerxgoColors.textLow, size: 36),
                         const SizedBox(height: 12),
                         Text(
                           _womenOnlyFilter
                               ? 'Çevrende şu an kadın sürücü yok. Filtreyi kaldırıp dene.'
                               : 'Çevrede şu an müsait sürücü bulamadık.',
-                          style: const TextStyle(color: FerogoColors.textMid),
+                          style: const TextStyle(color: FerxgoColors.textMid),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -387,27 +387,27 @@ class _AddressInputs extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: FerogoColors.inkMuted,
+        color: FerxgoColors.inkMuted,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: FerogoColors.line),
+        border: Border.all(color: FerxgoColors.line),
       ),
       child: Column(
         children: [
           // PICKUP
           _Row(
-            dotColor: FerogoColors.brand,
+            dotColor: FerxgoColors.brand,
             placeholder: pickupLabel,
             isEmpty: false,
-            trailing: const Icon(Icons.my_location, color: FerogoColors.textLow, size: 18),
+            trailing: const Icon(Icons.my_location, color: FerxgoColors.textLow, size: 18),
             onTap: onPickupTap,
           ),
-          const Divider(height: 1, color: FerogoColors.line, indent: 16, endIndent: 16),
+          const Divider(height: 1, color: FerxgoColors.line, indent: 16, endIndent: 16),
           // DROPOFF
           _Row(
-            dotColor: FerogoColors.danger,
+            dotColor: FerxgoColors.danger,
             placeholder: 'Nereye gidiyorsun?',
             isEmpty: true,
-            trailing: const Icon(Icons.arrow_forward, color: FerogoColors.brand, size: 18),
+            trailing: const Icon(Icons.arrow_forward, color: FerxgoColors.brand, size: 18),
             onTap: onDropoffTap,
           ),
         ],
@@ -450,7 +450,7 @@ class _Row extends StatelessWidget {
                 placeholder,
                 maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: isEmpty ? FerogoColors.textLow : FerogoColors.textHigh,
+                  color: isEmpty ? FerxgoColors.textLow : FerxgoColors.textHigh,
                   fontWeight: isEmpty ? FontWeight.w500 : FontWeight.w600,
                   fontSize: 14,
                 ),
@@ -475,16 +475,16 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: FerogoColors.ink.withValues(alpha: 0.85),
+        color: FerxgoColors.ink.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: FerogoColors.line),
+        border: Border.all(color: FerxgoColors.line),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: FerogoColors.brand, size: 14),
+          Icon(icon, color: FerxgoColors.brand, size: 14),
           const SizedBox(width: 6),
-          Text(text, style: const TextStyle(color: FerogoColors.textHigh, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(text, style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 12, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -499,14 +499,14 @@ class _MeMarker extends StatelessWidget {
       Container(
         width: 32, height: 32,
         decoration: BoxDecoration(
-          color: FerogoColors.brand.withValues(alpha: 0.25),
+          color: FerxgoColors.brand.withValues(alpha: 0.25),
           shape: BoxShape.circle,
         ),
       ),
       Container(
         width: 14, height: 14,
         decoration: BoxDecoration(
-          color: FerogoColors.brand,
+          color: FerxgoColors.brand,
           shape: BoxShape.circle,
           border: Border.all(color: Colors.black, width: 2),
         ),
@@ -527,7 +527,7 @@ class _DriverPinIcon extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: FerogoColors.brand,
+            color: FerxgoColors.brand,
             borderRadius: BorderRadius.circular(10),
             boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 2))],
           ),
@@ -536,7 +536,7 @@ class _DriverPinIcon extends StatelessWidget {
             style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w800),
           ),
         ),
-        const Icon(Icons.local_taxi, color: FerogoColors.brand, size: 24),
+        const Icon(Icons.local_taxi, color: FerxgoColors.brand, size: 24),
       ],
     );
   }
@@ -553,7 +553,7 @@ class _DriverTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: FerogoColors.inkMuted,
+      color: FerxgoColors.inkMuted,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -572,15 +572,15 @@ class _DriverTile extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(driver.name,
-                            style: const TextStyle(color: FerogoColors.textHigh, fontWeight: FontWeight.w700),
+                            style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w700),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(Icons.star, color: FerogoColors.brand, size: 14),
+                        const Icon(Icons.star, color: FerxgoColors.brand, size: 14),
                         const SizedBox(width: 2),
                         Text(driver.rating.toStringAsFixed(1),
-                          style: const TextStyle(color: FerogoColors.textMid, fontSize: 12),
+                          style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12),
                         ),
                         if (driver.isFemale) ...[
                           const SizedBox(width: 6),
@@ -598,7 +598,7 @@ class _DriverTile extends StatelessWidget {
                         if (driver.vehicleClass != null) driver.vehicleClass,
                         if (driver.vehicleLabel != null && driver.vehicleLabel!.isNotEmpty) driver.vehicleLabel,
                       ].whereType<String>().join(' · '),
-                      style: const TextStyle(color: FerogoColors.textLow, fontSize: 12),
+                      style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (driver.favoriteCount > 0) ...[
@@ -618,7 +618,7 @@ class _DriverTile extends StatelessWidget {
                   tooltip: driver.isFavorite ? 'Favorilerden çıkar' : 'Favori şoför yap',
                   icon: Icon(
                     driver.isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: driver.isFavorite ? _pink : FerogoColors.textLow,
+                    color: driver.isFavorite ? _pink : FerxgoColors.textLow,
                     size: 22,
                   ),
                 ),
@@ -627,10 +627,10 @@ class _DriverTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('${driver.etaMinutes} dk',
-                    style: const TextStyle(color: FerogoColors.brand, fontSize: 16, fontWeight: FontWeight.w800),
+                    style: const TextStyle(color: FerxgoColors.brand, fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                   Text('${driver.distanceKm.toStringAsFixed(1)} km',
-                    style: const TextStyle(color: FerogoColors.textLow, fontSize: 11),
+                    style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
                   ),
                 ],
               ),
@@ -723,7 +723,7 @@ class _Avatar extends StatelessWidget {
       borderRadius: BorderRadius.circular(22),
       child: Container(
         width: 44, height: 44,
-        color: FerogoColors.brand.withValues(alpha: 0.18),
+        color: FerxgoColors.brand.withValues(alpha: 0.18),
         alignment: Alignment.center,
         child: url != null && url!.isNotEmpty
             ? Image.network(
@@ -738,6 +738,6 @@ class _Avatar extends StatelessWidget {
   }
 
   Widget _initials(String s) => Text(s,
-    style: const TextStyle(color: FerogoColors.brand, fontWeight: FontWeight.w800, fontSize: 14),
+    style: const TextStyle(color: FerxgoColors.brand, fontWeight: FontWeight.w800, fontSize: 14),
   );
 }

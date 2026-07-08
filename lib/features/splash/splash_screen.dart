@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../shared/widgets/ferogo_logo.dart';
+import '../../shared/widgets/ferxgo_logo.dart';
 
 /// Auth + mod state'leri okunurken görünür. Router bittiğinde otomatik
 /// /mode, /customer/phone, /customer/home gibi hedefe atar.
@@ -11,7 +11,7 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: FerogoColors.ink,
+      backgroundColor: FerxgoColors.ink,
       body: Stack(
         children: [
           Positioned.fill(
@@ -21,8 +21,8 @@ class SplashScreen extends StatelessWidget {
                   center: Alignment.topCenter,
                   radius: 1.3,
                   colors: [
-                    FerogoColors.brand.withValues(alpha: 0.18),
-                    FerogoColors.ink,
+                    FerxgoColors.brand.withValues(alpha: 0.18),
+                    FerxgoColors.ink,
                   ],
                 ),
               ),
@@ -32,13 +32,13 @@ class SplashScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const FerogoLogo(size: 56),
+                const FerxgoLogo(size: 56),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: 32, height: 32,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.6,
-                    color: FerogoColors.brand.withValues(alpha: 0.9),
+                    color: FerxgoColors.brand.withValues(alpha: 0.9),
                   ),
                 ),
               ],

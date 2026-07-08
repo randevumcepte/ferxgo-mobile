@@ -3,45 +3,45 @@ import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
 
-/// Ferogo Material 3 teması. Default koyu mod (gece sürüş + harita kontrastı için).
+/// FerXGo Material 3 teması. Default koyu mod (gece sürüş + harita kontrastı için).
 /// Açık mod da var; sistem ayarını takip eder.
-class FerogoTheme {
-  FerogoTheme._();
+class FerxgoTheme {
+  FerxgoTheme._();
 
   static ThemeData dark() {
     final scheme = ColorScheme.fromSeed(
-      seedColor: FerogoColors.brand,
+      seedColor: FerxgoColors.brand,
       brightness: Brightness.dark,
-      primary: FerogoColors.brand,
+      primary: FerxgoColors.brand,
       onPrimary: Colors.black,
-      surface: FerogoColors.inkSoft,
-      onSurface: FerogoColors.textHigh,
-      surfaceContainerHighest: FerogoColors.inkMuted,
-      outline: FerogoColors.line,
-      error: FerogoColors.danger,
+      surface: FerxgoColors.inkSoft,
+      onSurface: FerxgoColors.textHigh,
+      surfaceContainerHighest: FerxgoColors.inkMuted,
+      outline: FerxgoColors.line,
+      error: FerxgoColors.danger,
     );
 
     return _base(scheme).copyWith(
-      scaffoldBackgroundColor: FerogoColors.ink,
+      scaffoldBackgroundColor: FerxgoColors.ink,
       appBarTheme: AppBarTheme(
-        backgroundColor: FerogoColors.ink,
-        foregroundColor: FerogoColors.textHigh,
+        backgroundColor: FerxgoColors.ink,
+        foregroundColor: FerxgoColors.textHigh,
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         centerTitle: false,
         titleTextStyle: const TextStyle(
-          color: FerogoColors.textHigh,
+          color: FerxgoColors.textHigh,
           fontSize: 18,
           fontWeight: FontWeight.w700,
         ),
       ),
       cardTheme: CardThemeData(
-        color: FerogoColors.inkSoft,
+        color: FerxgoColors.inkSoft,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: FerogoColors.line),
+          side: const BorderSide(color: FerxgoColors.line),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -54,36 +54,36 @@ class FerogoTheme {
 
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(
-      seedColor: FerogoColors.brand,
+      seedColor: FerxgoColors.brand,
       brightness: Brightness.light,
-      primary: FerogoColors.brand,
+      primary: FerxgoColors.brand,
       onPrimary: Colors.black,
-      surface: FerogoColors.paper,
-      onSurface: FerogoColors.textInkHigh,
-      outline: FerogoColors.paperLine,
+      surface: FerxgoColors.paper,
+      onSurface: FerxgoColors.textInkHigh,
+      outline: FerxgoColors.paperLine,
     );
 
     return _base(scheme).copyWith(
-      scaffoldBackgroundColor: FerogoColors.paperAlt,
+      scaffoldBackgroundColor: FerxgoColors.paperAlt,
       appBarTheme: AppBarTheme(
-        backgroundColor: FerogoColors.paper,
-        foregroundColor: FerogoColors.textInkHigh,
+        backgroundColor: FerxgoColors.paper,
+        foregroundColor: FerxgoColors.textInkHigh,
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         centerTitle: false,
         titleTextStyle: const TextStyle(
-          color: FerogoColors.textInkHigh,
+          color: FerxgoColors.textInkHigh,
           fontSize: 18,
           fontWeight: FontWeight.w700,
         ),
       ),
       cardTheme: CardThemeData(
-        color: FerogoColors.paper,
+        color: FerxgoColors.paper,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: FerogoColors.paperLine),
+          side: const BorderSide(color: FerxgoColors.paperLine),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -102,9 +102,9 @@ class FerogoTheme {
       );
 
   static InputDecorationTheme _inputDecoration({required bool dark}) {
-    final fill = dark ? FerogoColors.inkMuted : FerogoColors.paper;
-    final border = dark ? FerogoColors.line : FerogoColors.paperLine;
-    final hint = dark ? FerogoColors.textLow : FerogoColors.textInkMid;
+    final fill = dark ? FerxgoColors.inkMuted : FerxgoColors.paper;
+    final border = dark ? FerxgoColors.line : FerxgoColors.paperLine;
+    final hint = dark ? FerxgoColors.textLow : FerxgoColors.textInkMid;
     return InputDecorationTheme(
       filled: true,
       fillColor: fill,
@@ -120,24 +120,24 @@ class FerogoTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: FerogoColors.brand, width: 2),
+        borderSide: const BorderSide(color: FerxgoColors.brand, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: FerogoColors.danger),
+        borderSide: const BorderSide(color: FerxgoColors.danger),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: FerogoColors.danger, width: 2),
+        borderSide: const BorderSide(color: FerxgoColors.danger, width: 2),
       ),
     );
   }
 
   static FilledButtonThemeData _filledButton() => FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: FerogoColors.brand,
+          backgroundColor: FerxgoColors.brand,
           foregroundColor: Colors.black,
-          disabledBackgroundColor: FerogoColors.brand.withValues(alpha: 0.35),
+          disabledBackgroundColor: FerxgoColors.brand.withValues(alpha: 0.35),
           disabledForegroundColor: Colors.black54,
           minimumSize: const Size(double.infinity, 54),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -149,9 +149,9 @@ class FerogoTheme {
   static OutlinedButtonThemeData _outlinedButton({required bool dark}) =>
       OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: dark ? FerogoColors.textHigh : FerogoColors.textInkHigh,
+          foregroundColor: dark ? FerxgoColors.textHigh : FerxgoColors.textInkHigh,
           minimumSize: const Size(double.infinity, 54),
-          side: BorderSide(color: dark ? FerogoColors.line : FerogoColors.paperLine),
+          side: BorderSide(color: dark ? FerxgoColors.line : FerxgoColors.paperLine),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
@@ -159,7 +159,7 @@ class FerogoTheme {
 
   static TextButtonThemeData _textButton() => TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: FerogoColors.brand,
+          foregroundColor: FerxgoColors.brand,
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       );

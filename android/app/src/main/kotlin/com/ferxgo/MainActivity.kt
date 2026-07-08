@@ -1,4 +1,4 @@
-package com.ferogo.ferogo_mobile
+package com.ferxgo
 
 import io.flutter.embedding.android.FlutterActivity
 

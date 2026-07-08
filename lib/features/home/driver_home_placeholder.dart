@@ -17,7 +17,7 @@ class DriverHomePlaceholder extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ferogo Sürücü'),
+        title: const Text('FerXGo Sürücü'),
         actions: [
           IconButton(
             tooltip: 'Çıkış',
@@ -34,12 +34,12 @@ class DriverHomePlaceholder extends ConsumerWidget {
             children: [
               Text(
                 'Hoş geldin, ${user?.name ?? 'Sürücü'} 🚖',
-                style: const TextStyle(color: FerogoColors.textHigh, fontSize: 26, fontWeight: FontWeight.w800),
+                style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 26, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 6),
               const Text(
                 'Faz 2: çevrimiçi/çevrimdışı, teklif kabulü, aktif yolculuk burada olacak.',
-                style: TextStyle(color: FerogoColors.textLow, fontSize: 14, height: 1.4),
+                style: TextStyle(color: FerxgoColors.textLow, fontSize: 14, height: 1.4),
               ),
               const SizedBox(height: 28),
               const SoonCard(
@@ -59,7 +59,7 @@ class DriverHomePlaceholder extends ConsumerWidget {
               const Center(
                 child: Text(
                   'Faz 1 · iskelet hazır',
-                  style: TextStyle(color: FerogoColors.textLow, fontSize: 12),
+                  style: TextStyle(color: FerxgoColors.textLow, fontSize: 12),
                 ),
               ),
             ],

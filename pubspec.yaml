@@ -1,4 +1,4 @@
-name: ferogo_mobile
+name: ferxgo_mobile
 description: "FerXGo — şoför rezervasyon uygulaması"
 publish_to: 'none'
 version: 0.1.0+1
@@ -45,6 +45,7 @@ dependencies:
   intl: ^0.20.0
   device_info_plus: ^11.1.1
   package_info_plus: ^8.1.0
+  change_app_package_name: ^1.5.0
 
 dev_dependencies:
   flutter_test:

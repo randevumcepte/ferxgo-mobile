@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../app_mode/app_mode.dart';
-import '../../shared/widgets/ferogo_logo.dart';
+import '../../shared/widgets/ferxgo_logo.dart';
 
 class ModeSelectScreen extends ConsumerWidget {
   const ModeSelectScreen({super.key});
@@ -11,19 +11,19 @@ class ModeSelectScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: FerogoColors.ink,
+      backgroundColor: FerxgoColors.ink,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const FerogoLogo(size: 28),
+              const FerxgoLogo(size: 28),
               const Spacer(),
               const Text(
                 'Hangi taraftan başlıyoruz?',
                 style: TextStyle(
-                  color: FerogoColors.textHigh,
+                  color: FerxgoColors.textHigh,
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
                   height: 1.2,
@@ -32,7 +32,7 @@ class ModeSelectScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               const Text(
                 'Bu seçimi sonra ayarlardan değiştirebilirsin.',
-                style: TextStyle(color: FerogoColors.textLow, fontSize: 14),
+                style: TextStyle(color: FerxgoColors.textLow, fontSize: 14),
               ),
               const SizedBox(height: 28),
               _ModeCard(
@@ -57,8 +57,8 @@ class ModeSelectScreen extends ConsumerWidget {
               const Spacer(),
               const Center(
                 child: Text(
-                  '© Ferogo · İzmir',
-                  style: TextStyle(color: FerogoColors.textLow, fontSize: 12),
+                  '© FerXGo · İzmir',
+                  style: TextStyle(color: FerxgoColors.textLow, fontSize: 12),
                 ),
               ),
             ],
@@ -87,7 +87,7 @@ class _ModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: FerogoColors.inkSoft,
+      color: FerxgoColors.inkSoft,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
@@ -100,10 +100,10 @@ class _ModeCard extends StatelessWidget {
               Container(
                 width: 52, height: 52,
                 decoration: BoxDecoration(
-                  color: FerogoColors.brand.withValues(alpha: 0.16),
+                  color: FerxgoColors.brand.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: FerogoColors.brand, size: 28),
+                child: Icon(icon, color: FerxgoColors.brand, size: 28),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -112,7 +112,7 @@ class _ModeCard extends StatelessWidget {
                   children: [
                     Text(title,
                       style: const TextStyle(
-                        color: FerogoColors.textHigh,
+                        color: FerxgoColors.textHigh,
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
@@ -120,7 +120,7 @@ class _ModeCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(subtitle,
                       style: const TextStyle(
-                        color: FerogoColors.textMid,
+                        color: FerxgoColors.textMid,
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -130,13 +130,13 @@ class _ModeCard extends StatelessWidget {
                       children: [
                         Text(cta,
                           style: const TextStyle(
-                            color: FerogoColors.brand,
+                            color: FerxgoColors.brand,
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(Icons.arrow_forward, size: 16, color: FerogoColors.brand),
+                        const Icon(Icons.arrow_forward, size: 16, color: FerxgoColors.brand),
                       ],
                     ),
                   ],

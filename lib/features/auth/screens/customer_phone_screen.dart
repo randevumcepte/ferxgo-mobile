@@ -64,7 +64,7 @@ class _CustomerPhoneScreenState extends ConsumerState<CustomerPhoneScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: FerogoColors.ink,
+        backgroundColor: FerxgoColors.ink,
         leading: IconButton(
           onPressed: () async {
             // Mod seçimine dönmek = modu sıfırla; router otomatik /mode'a atar
@@ -84,13 +84,13 @@ class _CustomerPhoneScreenState extends ConsumerState<CustomerPhoneScreen> {
                 const Text(
                   'Telefon numaran',
                   style: TextStyle(
-                    color: FerogoColors.textHigh, fontSize: 28, fontWeight: FontWeight.w800,
+                    color: FerxgoColors.textHigh, fontSize: 28, fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'Sana SMS ile 6 haneli doğrulama kodu göndereceğiz.',
-                  style: TextStyle(color: FerogoColors.textLow, fontSize: 14, height: 1.4),
+                  style: TextStyle(color: FerxgoColors.textLow, fontSize: 14, height: 1.4),
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
@@ -98,14 +98,14 @@ class _CustomerPhoneScreenState extends ConsumerState<CustomerPhoneScreen> {
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.done,
                   autofocus: true,
-                  style: const TextStyle(color: FerogoColors.textHigh, fontSize: 18, letterSpacing: 0.5),
+                  style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 18, letterSpacing: 0.5),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9 ()+-]')),
                     LengthLimitingTextInputFormatter(20),
                   ],
                   decoration: const InputDecoration(
                     prefixText: '+90 ',
-                    prefixStyle: TextStyle(color: FerogoColors.textMid, fontSize: 18),
+                    prefixStyle: TextStyle(color: FerxgoColors.textMid, fontSize: 18),
                     hintText: '5xx xxx xx xx',
                   ),
                   validator: (v) {
@@ -128,7 +128,7 @@ class _CustomerPhoneScreenState extends ConsumerState<CustomerPhoneScreen> {
                 const Text(
                   'Devam ederek KVKK Aydınlatma Metni ve Kullanım Şartları\'nı kabul ediyorsun.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: FerogoColors.textLow, fontSize: 12, height: 1.4),
+                  style: TextStyle(color: FerxgoColors.textLow, fontSize: 12, height: 1.4),
                 ),
               ],
             ),

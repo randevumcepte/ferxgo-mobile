@@ -155,9 +155,9 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     final classesAsync = ref.watch(vehicleClassesProvider);
 
     return Scaffold(
-      backgroundColor: FerogoColors.ink,
+      backgroundColor: FerxgoColors.ink,
       appBar: AppBar(
-        backgroundColor: FerogoColors.ink,
+        backgroundColor: FerxgoColors.ink,
         title: const Text('Talebi onayla'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -179,12 +179,12 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
 
             // Vehicle class chip'leri
             const Text('Araç sınıfı',
-              style: TextStyle(color: FerogoColors.textMid, fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(color: FerxgoColors.textMid, fontSize: 13, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             classesAsync.when(
-              loading: () => const SizedBox(height: 56, child: Center(child: CircularProgressIndicator(color: FerogoColors.brand))),
-              error: (_, _) => const Text('Araç sınıfları yüklenemedi', style: TextStyle(color: FerogoColors.danger)),
+              loading: () => const SizedBox(height: 56, child: Center(child: CircularProgressIndicator(color: FerxgoColors.brand))),
+              error: (_, _) => const Text('Araç sınıfları yüklenemedi', style: TextStyle(color: FerxgoColors.danger)),
               data: (classes) => Wrap(
                 spacing: 8, runSpacing: 8,
                 children: classes.map((c) {
@@ -211,15 +211,15 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
 
             // Sürücü seçimi
             const Text('Sürücü seç',
-              style: TextStyle(color: FerogoColors.textMid, fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(color: FerxgoColors.textMid, fontSize: 13, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             if (_nearby == null)
-              const SizedBox(height: 80, child: Center(child: CircularProgressIndicator(color: FerogoColors.brand)))
+              const SizedBox(height: 80, child: Center(child: CircularProgressIndicator(color: FerxgoColors.brand)))
             else if (_nearby!.drivers.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text('Çevrede şu an müsait sürücü yok.', style: TextStyle(color: FerogoColors.textLow)),
+                child: Text('Çevrede şu an müsait sürücü yok.', style: TextStyle(color: FerxgoColors.textLow)),
               )
             else
               Column(
@@ -246,13 +246,13 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                     Checkbox(
                       value: _kvkk,
                       onChanged: (v) => setState(() => _kvkk = v ?? false),
-                      activeColor: FerogoColors.brand,
+                      activeColor: FerxgoColors.brand,
                       checkColor: Colors.black,
                     ),
                     const Expanded(
                       child: Text(
                         'KVKK Aydınlatma Metni ve Kullanım Şartları\'nı okudum, kabul ediyorum.',
-                        style: TextStyle(color: FerogoColors.textMid, fontSize: 12, height: 1.35),
+                        style: TextStyle(color: FerxgoColors.textMid, fontSize: 12, height: 1.35),
                       ),
                     ),
                   ],
@@ -305,35 +305,35 @@ class _RouteCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: FerogoColors.inkSoft,
+        color: FerxgoColors.inkSoft,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: FerogoColors.line),
+        border: Border.all(color: FerxgoColors.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _row(Icons.circle_outlined, FerogoColors.brand, pickup),
+          _row(Icons.circle_outlined, FerxgoColors.brand, pickup),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-            child: SizedBox(height: 14, child: VerticalDivider(color: FerogoColors.line, width: 1, thickness: 1)),
+            child: SizedBox(height: 14, child: VerticalDivider(color: FerxgoColors.line, width: 1, thickness: 1)),
           ),
-          _row(Icons.place, FerogoColors.danger, dropoff),
+          _row(Icons.place, FerxgoColors.danger, dropoff),
           if (distanceKm != null && durationMinutes != null) ...[
             const SizedBox(height: 10),
-            const Divider(color: FerogoColors.line, height: 1),
+            const Divider(color: FerxgoColors.line, height: 1),
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.route, color: FerogoColors.textLow, size: 14),
+                const Icon(Icons.route, color: FerxgoColors.textLow, size: 14),
                 const SizedBox(width: 4),
                 Text('${distanceKm!.toStringAsFixed(1)} km',
-                  style: const TextStyle(color: FerogoColors.textMid, fontSize: 12),
+                  style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12),
                 ),
                 const SizedBox(width: 16),
-                const Icon(Icons.timer_outlined, color: FerogoColors.textLow, size: 14),
+                const Icon(Icons.timer_outlined, color: FerxgoColors.textLow, size: 14),
                 const SizedBox(width: 4),
                 Text('~$durationMinutes dk',
-                  style: const TextStyle(color: FerogoColors.textMid, fontSize: 12),
+                  style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12),
                 ),
               ],
             ),
@@ -349,7 +349,7 @@ class _RouteCard extends StatelessWidget {
           Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, color: color, size: 14)),
           const SizedBox(width: 8),
           Expanded(child: Text(text,
-            style: const TextStyle(color: FerogoColors.textHigh, fontSize: 13, height: 1.35),
+            style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 13, height: 1.35),
             maxLines: 2, overflow: TextOverflow.ellipsis,
           )),
         ],
@@ -371,13 +371,13 @@ class _ClassChip extends StatelessWidget {
         duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? FerogoColors.brand : FerogoColors.inkMuted,
+          color: selected ? FerxgoColors.brand : FerxgoColors.inkMuted,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? FerogoColors.brand : FerogoColors.line),
+          border: Border.all(color: selected ? FerxgoColors.brand : FerxgoColors.line),
         ),
         child: Text(label,
           style: TextStyle(
-            color: selected ? Colors.black : FerogoColors.textHigh,
+            color: selected ? Colors.black : FerxgoColors.textHigh,
             fontWeight: FontWeight.w700, fontSize: 13,
           ),
         ),
@@ -396,25 +396,25 @@ class _FareBlock extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: FerogoColors.brand.withValues(alpha: 0.10),
+        color: FerxgoColors.brand.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: FerogoColors.brand.withValues(alpha: 0.45)),
+        border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.45)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.payments, color: FerogoColors.brand),
+          const Icon(Icons.payments, color: FerxgoColors.brand),
           const SizedBox(width: 10),
           const Expanded(
             child: Text('Tahmini ücret',
-              style: TextStyle(color: FerogoColors.textMid, fontSize: 13),
+              style: TextStyle(color: FerxgoColors.textMid, fontSize: 13),
             ),
           ),
           if (loading)
-            const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: FerogoColors.brand))
+            const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: FerxgoColors.brand))
           else
             Text(
               fare != null ? '${fare!.toStringAsFixed(0)} ₺' : '—',
-              style: const TextStyle(color: FerogoColors.textHigh, fontSize: 20, fontWeight: FontWeight.w800),
+              style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 20, fontWeight: FontWeight.w800),
             ),
         ],
       ),
@@ -431,7 +431,7 @@ class _DriverRadio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? FerogoColors.brand.withValues(alpha: 0.12) : FerogoColors.inkSoft,
+      color: selected ? FerxgoColors.brand.withValues(alpha: 0.12) : FerxgoColors.inkSoft,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -441,7 +441,7 @@ class _DriverRadio extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? FerogoColors.brand : FerogoColors.line,
+              color: selected ? FerxgoColors.brand : FerxgoColors.line,
               width: selected ? 1.4 : 1,
             ),
           ),
@@ -449,7 +449,7 @@ class _DriverRadio extends StatelessWidget {
             children: [
               Icon(
                 selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                color: selected ? FerogoColors.brand : FerogoColors.textLow,
+                color: selected ? FerxgoColors.brand : FerxgoColors.textLow,
                 size: 20,
               ),
               const SizedBox(width: 10),
@@ -460,14 +460,14 @@ class _DriverRadio extends StatelessWidget {
                     Row(
                       children: [
                         Flexible(child: Text(driver.name,
-                          style: const TextStyle(color: FerogoColors.textHigh, fontWeight: FontWeight.w700),
+                          style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w700),
                           overflow: TextOverflow.ellipsis,
                         )),
                         const SizedBox(width: 6),
-                        const Icon(Icons.star, color: FerogoColors.brand, size: 13),
+                        const Icon(Icons.star, color: FerxgoColors.brand, size: 13),
                         const SizedBox(width: 2),
                         Text(driver.rating.toStringAsFixed(1),
-                          style: const TextStyle(color: FerogoColors.textMid, fontSize: 11),
+                          style: const TextStyle(color: FerxgoColors.textMid, fontSize: 11),
                         ),
                       ],
                     ),
@@ -477,7 +477,7 @@ class _DriverRadio extends StatelessWidget {
                         if (driver.vehicleClass != null) driver.vehicleClass,
                         if (driver.vehicleLabel != null && driver.vehicleLabel!.isNotEmpty) driver.vehicleLabel,
                       ].whereType<String>().join(' · '),
-                      style: const TextStyle(color: FerogoColors.textLow, fontSize: 12),
+                      style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -488,10 +488,10 @@ class _DriverRadio extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('${driver.etaMinutes} dk',
-                    style: const TextStyle(color: FerogoColors.brand, fontSize: 14, fontWeight: FontWeight.w800),
+                    style: const TextStyle(color: FerxgoColors.brand, fontSize: 14, fontWeight: FontWeight.w800),
                   ),
                   Text('${driver.distanceKm.toStringAsFixed(1)} km',
-                    style: const TextStyle(color: FerogoColors.textLow, fontSize: 11),
+                    style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
                   ),
                 ],
               ),

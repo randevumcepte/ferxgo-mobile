@@ -8,7 +8,7 @@ import '../config/app_config.dart';
 import 'api_exception.dart';
 import 'interceptors/auth_device_interceptor.dart';
 
-/// Ferogo Mobile API client (Dio).
+/// FerXGo Mobile API client (Dio).
 ///
 /// Sözleşme (docs/MOBILE_API.md):
 ///  - Base URL: AppConfig.apiBaseUrl
@@ -85,4 +85,4 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(dio);
 });
 
-String _userAgent() => 'Ferogo-Mobile/0.1.0 (Dart/Dio)';
+String _userAgent() => 'FerXGo-Mobile/0.1.0 (Dart/Dio)';

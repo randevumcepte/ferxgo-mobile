@@ -30,7 +30,7 @@ class SoonCard extends StatelessWidget {
             ..showSnackBar(SnackBar(
               content: Text(snackBarMessage ?? 'Yakında — sonraki sürümde geliyor.'),
               behavior: SnackBarBehavior.floating,
-              backgroundColor: FerogoColors.inkMuted,
+              backgroundColor: FerxgoColors.inkMuted,
             ));
         },
         child: Padding(
@@ -40,10 +40,10 @@ class SoonCard extends StatelessWidget {
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color: FerogoColors.brand.withValues(alpha: 0.14),
+                  color: FerxgoColors.brand.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: FerogoColors.brand),
+                child: Icon(icon, color: FerxgoColors.brand),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -55,7 +55,7 @@ class SoonCard extends StatelessWidget {
                         Flexible(
                           child: Text(title,
                             style: const TextStyle(
-                              color: FerogoColors.textHigh,
+                              color: FerxgoColors.textHigh,
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
                             ),
@@ -65,13 +65,13 @@ class SoonCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: FerogoColors.brand.withValues(alpha: 0.16),
+                            color: FerxgoColors.brand.withValues(alpha: 0.16),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
                             'YAKINDA',
                             style: TextStyle(
-                              color: FerogoColors.brand,
+                              color: FerxgoColors.brand,
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.6,
@@ -81,11 +81,11 @@ class SoonCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(color: FerogoColors.textMid, fontSize: 13)),
+                    Text(subtitle, style: const TextStyle(color: FerxgoColors.textMid, fontSize: 13)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: FerogoColors.textLow, size: 20),
+              const Icon(Icons.chevron_right, color: FerxgoColors.textLow, size: 20),
             ],
           ),
         ),

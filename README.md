@@ -1,6 +1,6 @@
-# ferogo_mobile
+# ferxgo_mobile
 
-Ferogo Mobile
+FerXGo Mobile
 
 ## Getting Started
 

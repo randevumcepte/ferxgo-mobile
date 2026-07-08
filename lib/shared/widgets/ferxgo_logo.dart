@@ -5,8 +5,8 @@ import '../../core/theme/app_colors.dart';
 /// FerXGo wordmark — splash, login üst başlıkları için.
 /// Fer (beyaz) · X (altın, italik, büyük) · Go (beyaz).
 /// Asset eklenince image versiyonuna geçilebilir; şu an typo-mark.
-class FerogoLogo extends StatelessWidget {
-  const FerogoLogo({super.key, this.size = 32, this.color, this.xColor});
+class FerxgoLogo extends StatelessWidget {
+  const FerxgoLogo({super.key, this.size = 32, this.color, this.xColor});
 
   final double size;
 
@@ -18,8 +18,8 @@ class FerogoLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = color ?? FerogoColors.textHigh;
-    final x    = xColor ?? FerogoColors.brand;
+    final base = color ?? FerxgoColors.textHigh;
+    final x    = xColor ?? FerxgoColors.brand;
     return Text.rich(
       TextSpan(
         style: TextStyle(

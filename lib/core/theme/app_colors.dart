@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-/// Ferogo marka palet — web ile birebir uyumlu.
+/// FerXGo marka palet — web ile birebir uyumlu.
 /// Web tailwind config:
 ///   brand DEFAULT/500: #F0C040
 ///   brand 50:  #FEF9E7
 ///   brand 100: #FDF0C1
 ///   brand 600: #D9A621
 ///   brand 700: #B68918
-class FerogoColors {
-  FerogoColors._();
+class FerxgoColors {
+  FerxgoColors._();
 
   // Ana marka rengi (sarı amber)
   static const Color brand50  = Color(0xFFFEF9E7);

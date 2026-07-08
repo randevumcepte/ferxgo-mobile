@@ -9,11 +9,11 @@ class SecureStorage {
   final FlutterSecureStorage _storage;
 
   // Anahtarlar — tek noktada tutulur ki typo yenmesin.
-  static const String kAuthToken     = 'ferogo.auth.token';
-  static const String kAuthTokenExp  = 'ferogo.auth.expires_at';
-  static const String kAuthUserJson  = 'ferogo.auth.user';
-  static const String kDeviceId      = 'ferogo.device.id';
-  static const String kAppMode       = 'ferogo.app.mode'; // customer | driver
+  static const String kAuthToken     = 'ferxgo.auth.token';
+  static const String kAuthTokenExp  = 'ferxgo.auth.expires_at';
+  static const String kAuthUserJson  = 'ferxgo.auth.user';
+  static const String kDeviceId      = 'ferxgo.device.id';
+  static const String kAppMode       = 'ferxgo.app.mode'; // customer | driver
 
   Future<String?> read(String key) => _storage.read(key: key);
   Future<void> write(String key, String value) => _storage.write(key: key, value: value);

@@ -21,13 +21,13 @@ class CustomerHistoryScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Yolculuklarım'),
-        backgroundColor: FerogoColors.ink,
+        backgroundColor: FerxgoColors.ink,
       ),
       body: RefreshIndicator(
-        color: FerogoColors.brand,
+        color: FerxgoColors.brand,
         onRefresh: () async => ref.invalidate(_historyProvider),
         child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: FerogoColors.brand)),
+          loading: () => const Center(child: CircularProgressIndicator(color: FerxgoColors.brand)),
           error: (e, _) => ListView(
             padding: const EdgeInsets.all(20),
             children: [
@@ -42,18 +42,18 @@ class CustomerHistoryScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(24),
                 children: const [
                   SizedBox(height: 60),
-                  Icon(Icons.directions_car_filled_outlined, size: 56, color: FerogoColors.textLow),
+                  Icon(Icons.directions_car_filled_outlined, size: 56, color: FerxgoColors.textLow),
                   SizedBox(height: 16),
                   Text(
                     'Henüz yolculuk yapmamışsın',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: FerogoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w700),
+                    style: TextStyle(color: FerxgoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                   SizedBox(height: 6),
                   Text(
                     'İlk talebini gönderdiğinde burada görünecek.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: FerogoColors.textLow),
+                    style: TextStyle(color: FerxgoColors.textLow),
                   ),
                 ],
               );
@@ -76,10 +76,10 @@ class _RideTile extends StatelessWidget {
   final RideHistoryItem item;
 
   Color get _statusColor {
-    if (item.isCompleted) return FerogoColors.success;
-    if (item.isCancelled) return FerogoColors.danger;
-    if (item.isNoShow)    return FerogoColors.warning;
-    return FerogoColors.info;
+    if (item.isCompleted) return FerxgoColors.success;
+    if (item.isCancelled) return FerxgoColors.danger;
+    if (item.isNoShow)    return FerxgoColors.warning;
+    return FerxgoColors.info;
   }
 
   String get _statusLabel {
@@ -95,7 +95,7 @@ class _RideTile extends StatelessWidget {
     final dt = item.completedAt ?? item.createdAt;
 
     return Material(
-      color: FerogoColors.inkSoft,
+      color: FerxgoColors.inkSoft,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: () {
@@ -104,7 +104,7 @@ class _RideTile extends StatelessWidget {
             ..showSnackBar(SnackBar(
               content: Text('Yolculuk detayı sonraki adımda gelecek (#${item.publicId}).'),
               behavior: SnackBarBehavior.floating,
-              backgroundColor: FerogoColors.inkMuted,
+              backgroundColor: FerxgoColors.inkMuted,
             ));
         },
         borderRadius: BorderRadius.circular(14),
@@ -129,35 +129,35 @@ class _RideTile extends StatelessWidget {
                   const Spacer(),
                   Text(
                     df.format(dt.toLocal()),
-                    style: const TextStyle(color: FerogoColors.textLow, fontSize: 12),
+                    style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
-              _Row(icon: Icons.circle_outlined, text: item.pickupAddress, color: FerogoColors.brand),
+              _Row(icon: Icons.circle_outlined, text: item.pickupAddress, color: FerxgoColors.brand),
               const SizedBox(height: 4),
-              _Row(icon: Icons.place, text: item.dropoffAddress, color: FerogoColors.danger),
+              _Row(icon: Icons.place, text: item.dropoffAddress, color: FerxgoColors.danger),
               const SizedBox(height: 10),
               Row(
                 children: [
                   if (item.vehicleClass != null) ...[
-                    const Icon(Icons.local_taxi, size: 14, color: FerogoColors.textLow),
+                    const Icon(Icons.local_taxi, size: 14, color: FerxgoColors.textLow),
                     const SizedBox(width: 4),
-                    Text(item.vehicleClass!, style: const TextStyle(color: FerogoColors.textMid, fontSize: 12)),
+                    Text(item.vehicleClass!, style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12)),
                     const SizedBox(width: 12),
                   ],
                   if (item.driverName != null) ...[
-                    const Icon(Icons.person, size: 14, color: FerogoColors.textLow),
+                    const Icon(Icons.person, size: 14, color: FerxgoColors.textLow),
                     const SizedBox(width: 4),
                     Flexible(child: Text(item.driverName!,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: FerogoColors.textMid, fontSize: 12),
+                      style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12),
                     )),
                   ],
                   const Spacer(),
                   if (item.totalFare != null)
                     Text('${item.totalFare!.toStringAsFixed(0)} ₺',
-                      style: const TextStyle(color: FerogoColors.textHigh, fontWeight: FontWeight.w800),
+                      style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w800),
                     ),
                 ],
               ),
@@ -185,7 +185,7 @@ class _Row extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(child: Text(text,
-          style: const TextStyle(color: FerogoColors.textHigh, fontSize: 13, height: 1.35),
+          style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 13, height: 1.35),
           maxLines: 2, overflow: TextOverflow.ellipsis,
         )),
       ],

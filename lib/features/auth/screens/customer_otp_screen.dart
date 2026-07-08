@@ -101,7 +101,7 @@ class _CustomerOtpScreenState extends ConsumerState<CustomerOtpScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: FerogoColors.ink,
+        backgroundColor: FerxgoColors.ink,
         leading: IconButton(
           onPressed: () => context.go(AppRoutes.customerPhone),
           icon: const Icon(Icons.arrow_back),
@@ -116,18 +116,18 @@ class _CustomerOtpScreenState extends ConsumerState<CustomerOtpScreen> {
               const Text(
                 'Kodu gir',
                 style: TextStyle(
-                  color: FerogoColors.textHigh, fontSize: 28, fontWeight: FontWeight.w800,
+                  color: FerxgoColors.textHigh, fontSize: 28, fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 8),
               Text.rich(
                 TextSpan(
-                  style: const TextStyle(color: FerogoColors.textLow, fontSize: 14, height: 1.4),
+                  style: const TextStyle(color: FerxgoColors.textLow, fontSize: 14, height: 1.4),
                   children: [
                     const TextSpan(text: 'Sana SMS gönderdik: '),
                     TextSpan(
                       text: pretty,
-                      style: const TextStyle(color: FerogoColors.textHigh, fontWeight: FontWeight.w700),
+                      style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
@@ -149,7 +149,7 @@ class _CustomerOtpScreenState extends ConsumerState<CustomerOtpScreen> {
                   child: Text(
                     _canResend ? 'Kodu yeniden gönder' : 'Kodu yeniden gönder ($_resendIn sn)',
                     style: TextStyle(
-                      color: _canResend ? FerogoColors.brand : FerogoColors.textLow,
+                      color: _canResend ? FerxgoColors.brand : FerxgoColors.textLow,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -197,7 +197,7 @@ class _OtpField extends StatelessWidget {
       onChanged: onChanged,
       textAlign: TextAlign.center,
       style: const TextStyle(
-        color: FerogoColors.textHigh,
+        color: FerxgoColors.textHigh,
         fontSize: 28,
         fontWeight: FontWeight.w700,
         letterSpacing: 14,
@@ -209,7 +209,7 @@ class _OtpField extends StatelessWidget {
       decoration: const InputDecoration(
         counterText: '',
         hintText: '••••••',
-        hintStyle: TextStyle(color: FerogoColors.textLow, letterSpacing: 14),
+        hintStyle: TextStyle(color: FerxgoColors.textLow, letterSpacing: 14),
       ),
     );
   }
