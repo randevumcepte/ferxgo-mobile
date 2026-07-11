@@ -204,9 +204,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       ),
       body: Column(
         children: [
-          // ─── ÜST: HARITA (hep görünür, değişmez) ─
+          // ─── ÜST: HARITA (yazarken küçülür ama görünür kalır) ─
           Expanded(
-            flex: 1,
+            flex: _searchFocus.hasFocus ? 2 : 5,
             child: Stack(
               children: [
                 FlutterMap(
@@ -288,9 +288,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
             ),
           ),
 
-          // ─── ALT: PANEL (inputlar + sürücü/arama listesi) ─
+          // ─── ALT: PANEL (yazarken büyür — sonuçlar klavye üstünde görünsün) ─
           Expanded(
-            flex: 1,
+            flex: _searchFocus.hasFocus ? 8 : 5,
             child: Container(
               decoration: const BoxDecoration(
                 color: FerxgoColors.inkSoft,
@@ -301,38 +301,39 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                 top: false,
                 child: Column(
                   children: [
-                    const SizedBox(height: 14),
-                    // Başlık + yenile (arama modunda gizli)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              user != null ? 'Selam ${user.name.split(' ').first}' : 'Hoş geldin',
-                              style: const TextStyle(
-                                color: FerxgoColors.textHigh,
-                                fontSize: 18, fontWeight: FontWeight.w800,
+                    const SizedBox(height: 12),
+                    // Başlık + yenile (yazarken gizlenir, yer açılır)
+                    if (!_searchFocus.hasFocus)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                user != null ? 'Selam ${user.name.split(' ').first}' : 'Hoş geldin',
+                                style: const TextStyle(
+                                  color: FerxgoColors.textHigh,
+                                  fontSize: 18, fontWeight: FontWeight.w800,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          if (_loadingDrivers)
-                            const SizedBox(
-                              width: 18, height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: FerxgoColors.brand),
-                            )
-                          else
-                            IconButton(
-                              onPressed: _loadDrivers,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                              icon: const Icon(Icons.refresh, color: FerxgoColors.textMid),
-                            ),
-                        ],
+                            if (_loadingDrivers)
+                              const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: FerxgoColors.brand),
+                              )
+                            else
+                              IconButton(
+                                onPressed: _loadDrivers,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                icon: const Icon(Icons.refresh, color: FerxgoColors.textMid),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
+                    if (!_searchFocus.hasFocus) const SizedBox(height: 10),
                     // Adres girişleri: pickup (sabit) + dropoff (AYNI SAYFADA yazılabilir)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
