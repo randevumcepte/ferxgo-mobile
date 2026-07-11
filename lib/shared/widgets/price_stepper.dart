@@ -15,6 +15,7 @@ class PriceStepper extends StatelessWidget {
     this.currency = '₺',
     this.label,
     this.hint,
+    this.dense = false,
   });
 
   final double value;
@@ -25,6 +26,9 @@ class PriceStepper extends StatelessWidget {
   final String currency;
   final String? label;
   final String? hint;
+
+  /// Dar ekranlarda daha kompakt görünüm (küçük yazı/buton/boşluk).
+  final bool dense;
 
   void _bump(double delta) {
     var next = value + delta;
@@ -39,7 +43,7 @@ class PriceStepper extends StatelessWidget {
     final canInc = max == null || value < max!;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+      padding: dense ? const EdgeInsets.fromLTRB(12, 10, 12, 12) : const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: FerxgoColors.brand.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
@@ -56,20 +60,20 @@ class PriceStepper extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: dense ? 6 : 12),
           ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _StepButton(icon: Icons.remove, enabled: canDec, onTap: () => _bump(-step)),
+              _StepButton(icon: Icons.remove, enabled: canDec, dense: dense, onTap: () => _bump(-step)),
               Expanded(
                 child: Center(
                   child: FittedBox(
                     child: Text(
                       '${value.toStringAsFixed(0)} $currency',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: FerxgoColors.textHigh,
-                        fontSize: 40,
+                        fontSize: dense ? 30 : 40,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
                       ),
@@ -77,11 +81,11 @@ class PriceStepper extends StatelessWidget {
                   ),
                 ),
               ),
-              _StepButton(icon: Icons.add, enabled: canInc, onTap: () => _bump(step)),
+              _StepButton(icon: Icons.add, enabled: canInc, dense: dense, onTap: () => _bump(step)),
             ],
           ),
           if (hint != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: dense ? 6 : 8),
             Text(
               hint!,
               textAlign: TextAlign.center,
@@ -103,13 +107,15 @@ class PriceStepper extends StatelessWidget {
 }
 
 class _StepButton extends StatelessWidget {
-  const _StepButton({required this.icon, required this.enabled, required this.onTap});
+  const _StepButton({required this.icon, required this.enabled, required this.onTap, this.dense = false});
   final IconData icon;
   final bool enabled;
   final VoidCallback onTap;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
+    final size = dense ? 42.0 : 48.0;
     return Material(
       color: enabled ? FerxgoColors.brand : FerxgoColors.inkMuted,
       shape: const CircleBorder(),
@@ -117,12 +123,12 @@ class _StepButton extends StatelessWidget {
         customBorder: const CircleBorder(),
         onTap: enabled ? onTap : null,
         child: SizedBox(
-          width: 48,
-          height: 48,
+          width: size,
+          height: size,
           child: Icon(
             icon,
             color: enabled ? Colors.black : FerxgoColors.textLow,
-            size: 26,
+            size: dense ? 23 : 26,
           ),
         ),
       ),

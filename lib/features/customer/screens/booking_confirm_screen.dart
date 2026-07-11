@@ -192,7 +192,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
               distanceKm: draft.distanceKm,
               durationMinutes: draft.durationMinutes,
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
 
             // Vehicle class chip'leri
             const Text('Araç sınıfı',
@@ -217,16 +217,9 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                 }).toList(),
               ),
             ),
-            const SizedBox(height: 18),
-
-            // Önerilen ücret (çapa)
-            _FareBlock(
-              fare: draft.estimatedFare,
-              loading: _busyFare,
-            ),
             const SizedBox(height: 12),
 
-            // Yolcu teklifi (inDrive tarzı pazarlık) — öneri ±%40
+            // Yolcu teklifi (önerilen çapa hint'te + inDrive pazarlık, ±%40)
             if (draft.estimatedFare != null && _offerFare != null)
               PriceStepper(
                 label: 'Yolculuk teklifin',
@@ -234,10 +227,16 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                 min: (draft.estimatedFare! * 0.6).roundToDouble(),
                 max: (draft.estimatedFare! * 1.4).roundToDouble(),
                 step: 10,
-                hint: 'Sürücü kabul edebilir ya da karşı teklif verebilir.',
+                dense: true,
+                hint: 'Önerilen ${draft.estimatedFare!.toStringAsFixed(0)} ₺ · sürücü kabul/karşı teklif verebilir',
                 onChanged: (v) => setState(() => _offerFare = v),
+              )
+            else if (_busyFare)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: CircularProgressIndicator(color: FerxgoColors.brand)),
               ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
 
             // Sürücü seçimi (opsiyonel — "Hadi Gidelim" için gerekmez)
             const Text('Sürücü seç (opsiyonel)',
@@ -325,6 +324,14 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
   }
 }
 
+/// Süreyi okunur biçimde göster: 60 dk'nın altında "~45 dk", üstünde "~1 sa 8 dk".
+String _fmtDuration(int minutes) {
+  if (minutes < 60) return '~$minutes dk';
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  return m == 0 ? '~$h sa' : '~$h sa $m dk';
+}
+
 double _haversineKm(LatLng a, LatLng b) {
   const r = 6371.0;
   final dLat = (b.latitude - a.latitude) * math.pi / 180.0;
@@ -380,7 +387,7 @@ class _RouteCard extends StatelessWidget {
                 const SizedBox(width: 16),
                 const Icon(Icons.timer_outlined, color: FerxgoColors.textLow, size: 14),
                 const SizedBox(width: 4),
-                Text('~$durationMinutes dk',
+                Text(_fmtDuration(durationMinutes!),
                   style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12),
                 ),
               ],
@@ -429,42 +436,6 @@ class _ClassChip extends StatelessWidget {
             fontWeight: FontWeight.w700, fontSize: 13,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _FareBlock extends StatelessWidget {
-  const _FareBlock({required this.fare, required this.loading});
-  final double? fare;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: FerxgoColors.brand.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.45)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.payments, color: FerxgoColors.brand),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text('Önerilen ücret',
-              style: TextStyle(color: FerxgoColors.textMid, fontSize: 13),
-            ),
-          ),
-          if (loading)
-            const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: FerxgoColors.brand))
-          else
-            Text(
-              fare != null ? '${fare!.toStringAsFixed(0)} ₺' : '—',
-              style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 20, fontWeight: FontWeight.w800),
-            ),
-        ],
       ),
     );
   }
