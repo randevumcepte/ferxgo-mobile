@@ -10,7 +10,6 @@ import '../../../core/location/location_service.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/error_banner.dart';
-import '../../auth/auth_repository.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
 import '../models/place.dart';
@@ -147,9 +146,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
             icon: const Icon(Icons.history),
           ),
           IconButton(
-            tooltip: 'Çıkış',
-            onPressed: () => ref.read(authRepositoryProvider).logout(),
-            icon: const Icon(Icons.logout),
+            tooltip: 'Profil',
+            onPressed: () => context.push(AppRoutes.profile),
+            icon: const Icon(Icons.account_circle_outlined),
           ),
         ],
       ),

@@ -12,7 +12,9 @@ import '../../../core/config/app_config.dart';
 import '../../../core/location/location_service.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/models/negotiation.dart';
 import '../../../shared/widgets/error_banner.dart';
+import '../../../shared/widgets/price_stepper.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
 import '../models/ride_status.dart';
@@ -178,6 +180,81 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     }
   }
 
+  // ─── Fiyat pazarlığı: sürücü karşı teklif verdi ───────────
+  Future<void> _acceptPrice() async {
+    setState(() => _busyAction = true);
+    try {
+      final s = await ref.read(customerRideRepositoryProvider)
+          .acceptPrice(widget.publicId, LocationService.defaultCenter);
+      if (!mounted) return;
+      setState(() => _status = s);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busyAction = false);
+    }
+  }
+
+  Future<void> _counterPrice(Negotiation neg) async {
+    final start = neg.driverCounterFare ?? neg.currentPrice ?? neg.suggestedFare ?? 0;
+    final min = neg.minFare ?? (start * 0.6).roundToDouble();
+    final max = neg.maxFare ?? (start * 1.4).roundToDouble();
+    var draft = start.roundToDouble().clamp(min, max);
+
+    final result = await showModalBottomSheet<double>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: FerxgoColors.inkSoft,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Karşı teklifin',
+                style: TextStyle(color: FerxgoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text('Sürücü ${(neg.driverCounterFare ?? 0).toStringAsFixed(0)} ₺ istedi',
+                style: const TextStyle(color: FerxgoColors.textLow, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              PriceStepper(
+                value: draft.toDouble(),
+                min: min, max: max, step: 10,
+                onChanged: (v) => setSheet(() => draft = v),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, draft.toDouble()),
+                child: const Text('Teklifi gönder'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Vazgeç'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (result == null) return;
+    setState(() => _busyAction = true);
+    try {
+      await ref.read(customerRideRepositoryProvider).counterPrice(widget.publicId, result);
+      await _pollStatus();
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busyAction = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = _status;
@@ -225,6 +302,8 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
       return _Pending(
         status: s,
         onCancel: _busyAction ? null : _cancel,
+        onAcceptPrice: _busyAction ? null : _acceptPrice,
+        onCounterPrice: _busyAction ? null : () => _counterPrice(s.negotiation!),
         error: _error,
         onErrorClose: () => setState(() => _error = null),
       );
@@ -257,16 +336,23 @@ class _Pending extends StatelessWidget {
   const _Pending({
     required this.status,
     required this.onCancel,
+    required this.onAcceptPrice,
+    required this.onCounterPrice,
     required this.error,
     required this.onErrorClose,
   });
   final RideStatus status;
   final VoidCallback? onCancel;
+  final VoidCallback? onAcceptPrice;
+  final VoidCallback? onCounterPrice;
   final String? error;
   final VoidCallback onErrorClose;
 
   @override
   Widget build(BuildContext context) {
+    final neg = status.negotiation;
+    final awaitingDecision = status.awaitingCustomerPriceDecision && neg != null;
+
     final percentLeft = status.totalCandidates == 0
         ? 0.0
         : ((status.currentIndex + 1) / status.totalCandidates).clamp(0.0, 1.0);
@@ -283,37 +369,69 @@ class _Pending extends StatelessWidget {
                 width: 84, height: 84,
                 child: Stack(alignment: Alignment.center, children: [
                   CircularProgressIndicator(
-                    value: percentLeft,
+                    value: awaitingDecision ? null : percentLeft,
                     strokeWidth: 5,
                     backgroundColor: FerxgoColors.inkMuted,
                     color: FerxgoColors.brand,
                   ),
-                  Text('${status.secondsRemaining}',
-                    style: const TextStyle(color: FerxgoColors.brand, fontSize: 22, fontWeight: FontWeight.w800),
-                  ),
+                  if (!awaitingDecision)
+                    Text('${status.secondsRemaining}',
+                      style: const TextStyle(color: FerxgoColors.brand, fontSize: 22, fontWeight: FontWeight.w800),
+                    )
+                  else
+                    const Icon(Icons.handshake, color: FerxgoColors.brand, size: 30),
                 ]),
               ),
             ],
           ),
           const SizedBox(height: 18),
           Text(
-            status.offeredDriver != null
-                ? 'Teklif gönderildi: ${status.offeredDriver!.name}'
-                : 'Sürücü aranıyor…',
+            awaitingDecision
+                ? 'Sürücü karşı teklif verdi'
+                : status.offeredDriver != null
+                    ? 'Teklif gönderildi: ${status.offeredDriver!.name}'
+                    : 'Sürücü aranıyor…',
             textAlign: TextAlign.center,
             style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
-            status.totalCandidates > 0
-                ? 'Aday ${status.currentIndex + 1}/${status.totalCandidates}'
-                : 'Çevredeki sürücülere haber veriliyor.',
+            awaitingDecision
+                ? 'Kabul et, karşı teklif ver ya da vazgeç.'
+                : status.totalCandidates > 0
+                    ? 'Aday ${status.currentIndex + 1}/${status.totalCandidates}'
+                    : 'Çevredeki sürücülere haber veriliyor.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: FerxgoColors.textLow, fontSize: 13),
           ),
+
+          if (awaitingDecision) ...[
+            const SizedBox(height: 20),
+            _NegotiationCard(neg: neg),
+          ],
+
           const Spacer(),
           if (error != null) ErrorBanner(message: error!, onClose: onErrorClose),
           const SizedBox(height: 12),
+
+          if (awaitingDecision) ...[
+            FilledButton.icon(
+              onPressed: onAcceptPrice,
+              icon: const Icon(Icons.check_circle),
+              label: Text('Kabul et · ${(neg.driverCounterFare ?? 0).toStringAsFixed(0)} ₺'),
+              style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 52)),
+            ),
+            const SizedBox(height: 8),
+            if (neg.hasRoundsLeft)
+              OutlinedButton.icon(
+                onPressed: onCounterPrice,
+                icon: const Icon(Icons.swap_vert),
+                label: const Text('Karşı teklif ver'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+              ),
+            const SizedBox(height: 8),
+          ],
+
           OutlinedButton.icon(
             onPressed: onCancel,
             icon: const Icon(Icons.close, color: FerxgoColors.danger),
@@ -327,6 +445,64 @@ class _Pending extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Pazarlık özet kartı: senin teklifin ↔ sürücünün karşı teklifi.
+class _NegotiationCard extends StatelessWidget {
+  const _NegotiationCard({required this.neg});
+  final Negotiation neg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: FerxgoColors.inkSoft,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _priceCol(
+                  'Senin teklifin',
+                  neg.customerOfferFare,
+                  FerxgoColors.textMid,
+                ),
+              ),
+              const Icon(Icons.arrow_forward, color: FerxgoColors.textLow, size: 18),
+              Expanded(
+                child: _priceCol(
+                  'Sürücü istiyor',
+                  neg.driverCounterFare,
+                  FerxgoColors.brand,
+                ),
+              ),
+            ],
+          ),
+          if (neg.roundsLeft >= 0) ...[
+            const SizedBox(height: 10),
+            Text('Kalan pazarlık hakkı: ${neg.roundsLeft}',
+              style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _priceCol(String label, double? value, Color color) => Column(
+        children: [
+          Text(label, style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(
+            value != null ? '${value.toStringAsFixed(0)} ₺' : '—',
+            style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w800),
+          ),
+        ],
+      );
 }
 
 // ─────────────────────────────────────────────────────────────

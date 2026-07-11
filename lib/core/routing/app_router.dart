@@ -11,8 +11,9 @@ import '../../features/customer/screens/customer_history_screen.dart';
 import '../../features/customer/screens/customer_map_screen.dart';
 import '../../features/customer/screens/dropoff_search_screen.dart';
 import '../../features/customer/screens/ride_tracking_screen.dart';
-import '../../features/home/driver_home_placeholder.dart';
+import '../../features/driver/screens/driver_home_screen.dart';
 import '../../features/mode_select/mode_select_screen.dart';
+import '../../features/profile/profile_screen.dart';
 import '../../features/splash/splash_screen.dart';
 import '../auth/auth_controller.dart';
 
@@ -31,6 +32,7 @@ class AppRoutes {
   /// Tracking URL: `$customerRideBase/$publicId`
   static const customerRideBase       = '/customer/ride';
   static const driverHome             = '/driver/home';
+  static const profile                = '/profile';
 }
 
 /// Router auth state ve mod seçimini watch eder, ona göre redirect yapar.
@@ -122,7 +124,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           publicId: state.pathParameters['publicId']!,
         ),
       ),
-      GoRoute(path: AppRoutes.driverHome,          builder: (_, _) => const DriverHomePlaceholder()),
+      GoRoute(path: AppRoutes.driverHome,          builder: (_, _) => const DriverHomeScreen()),
+      GoRoute(path: AppRoutes.profile,             builder: (_, _) => const ProfileScreen()),
     ],
   );
 });

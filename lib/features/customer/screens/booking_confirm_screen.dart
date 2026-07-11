@@ -9,6 +9,7 @@ import '../../../core/api/api_exception.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/error_banner.dart';
+import '../../../shared/widgets/price_stepper.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
 import '../models/vehicle_class.dart';
@@ -32,6 +33,10 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
   NearbyResult? _nearby;
   int? _selectedDriverId;
   VehicleClassRef? _selectedClass;
+
+  /// Yolcunun teklif ettiği ücret (inDrive tarzı). Fiyat hesaplanınca öneriyle
+  /// başlatılır, ±%40 band içinde −/+ ile ayarlanır.
+  double? _offerFare;
 
   @override
   void initState() {
@@ -97,6 +102,10 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         durationMinutes: draft.durationMinutes!,
         fare: total,
       );
+      // Teklif önerilen ücretle başlasın (araç sınıfı değişince yeniden hizala)
+      if (total != null && mounted) {
+        setState(() => _offerFare = total.roundToDouble());
+      }
     } catch (_) {
       // fare opsiyonel — sessizce geç
     } finally {
@@ -133,6 +142,8 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         distanceKm: draft.distanceKm!,
         durationMinutes: draft.durationMinutes!,
         estimatedFare: draft.estimatedFare,
+        suggestedFare: draft.estimatedFare,
+        customerOfferFare: _offerFare ?? draft.estimatedFare,
         preferredDriverId: _selectedDriverId!,
         fallbackDriverIds: fallback,
       );
@@ -202,11 +213,24 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
             ),
             const SizedBox(height: 18),
 
-            // Fiyat
+            // Önerilen ücret (çapa)
             _FareBlock(
               fare: draft.estimatedFare,
               loading: _busyFare,
             ),
+            const SizedBox(height: 12),
+
+            // Yolcu teklifi (inDrive tarzı pazarlık) — öneri ±%40
+            if (draft.estimatedFare != null && _offerFare != null)
+              PriceStepper(
+                label: 'Yolculuk teklifin',
+                value: _offerFare!,
+                min: (draft.estimatedFare! * 0.6).roundToDouble(),
+                max: (draft.estimatedFare! * 1.4).roundToDouble(),
+                step: 10,
+                hint: 'Sürücü kabul edebilir ya da karşı teklif verebilir.',
+                onChanged: (v) => setState(() => _offerFare = v),
+              ),
             const SizedBox(height: 18),
 
             // Sürücü seçimi
@@ -405,7 +429,7 @@ class _FareBlock extends StatelessWidget {
           const Icon(Icons.payments, color: FerxgoColors.brand),
           const SizedBox(width: 10),
           const Expanded(
-            child: Text('Tahmini ücret',
+            child: Text('Önerilen ücret',
               style: TextStyle(color: FerxgoColors.textMid, fontSize: 13),
             ),
           ),

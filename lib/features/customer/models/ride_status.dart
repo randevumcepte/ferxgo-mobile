@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../shared/models/negotiation.dart';
 import 'nearby_driver.dart';
 
 /// `/customer/ride-requests/{publicId}` polling response'unun parse hali.
@@ -17,6 +18,7 @@ class RideStatus {
     required this.arrivedAt,
     required this.customerConfirmedAt,
     required this.noShowAt,
+    required this.negotiation,
   });
 
   /// pending | accepted | expired | cancelled
@@ -31,6 +33,7 @@ class RideStatus {
   final DateTime? arrivedAt;
   final DateTime? customerConfirmedAt;
   final DateTime? noShowAt;
+  final Negotiation? negotiation;
 
   bool get isPending   => status == 'pending';
   bool get isAccepted  => status == 'accepted';
@@ -41,6 +44,10 @@ class RideStatus {
   /// Sürücü vardı, müşteri henüz "gördüm" demedi
   bool get awaitingCustomerConfirm =>
       isAccepted && arrivedAt != null && customerConfirmedAt == null;
+
+  /// Sürücü karşı teklif verdi, yolcunun kabul/karşı-teklif/vazgeç kararı bekleniyor
+  bool get awaitingCustomerPriceDecision =>
+      isPending && (negotiation?.awaitingCustomer ?? false);
 
   static RideStatus fromJson(Map<String, dynamic> json, {required dynamic fallbackPosition}) {
     NearbyDriver? parseDriver(Object? raw) {
@@ -60,6 +67,7 @@ class RideStatus {
       arrivedAt: _parseDate(json['arrived_at']),
       customerConfirmedAt: _parseDate(json['customer_confirmed_at']),
       noShowAt: _parseDate(json['no_show_at']),
+      negotiation: Negotiation.fromJson(json['negotiation']),
     );
   }
 

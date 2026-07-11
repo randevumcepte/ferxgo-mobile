@@ -113,6 +113,8 @@ class CustomerRideRepository {
     required double distanceKm,
     required int durationMinutes,
     double? estimatedFare,
+    double? suggestedFare,
+    double? customerOfferFare,
     required int preferredDriverId,
     List<int> fallbackDriverIds = const [],
   }) async {
@@ -127,6 +129,8 @@ class CustomerRideRepository {
       'distance_km':     distanceKm,
       'duration_minutes':durationMinutes,
       'estimated_fare':  ?estimatedFare,
+      'suggested_fare':  ?suggestedFare,
+      'customer_offer_fare': ?customerOfferFare,
       'preferred_driver_id': preferredDriverId,
       'fallback_driver_ids': fallbackDriverIds,
       'kvkk_consent': true,
@@ -158,6 +162,22 @@ class CustomerRideRepository {
 
   Future<Map<String, dynamic>> confirmRequest(String publicId) async {
     return _api.postJson('/customer/ride-requests/$publicId/confirm');
+  }
+
+  // ─── Fiyat pazarlığı ──────────────────────────────────────
+  /// Müşteri sürücünün karşı teklifine yeni fiyat verir.
+  Future<void> counterPrice(String publicId, double amount) async {
+    await _api.postJson('/customer/ride-requests/$publicId/counter',
+        body: {'amount': amount});
+  }
+
+  /// Müşteri sürücünün karşı teklifini kabul eder → yolculuk başlar.
+  Future<RideStatus> acceptPrice(String publicId, LatLng fallback) async {
+    final res = await _api.postJson('/customer/ride-requests/$publicId/accept-price');
+    return RideStatus.fromJson(
+      (res['status'] as Map).cast<String, dynamic>(),
+      fallbackPosition: fallback,
+    );
   }
 
   Future<List<RideMessage>> messages(String publicId, {int sinceId = 0}) async {
