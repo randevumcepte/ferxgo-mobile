@@ -205,21 +205,21 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).value?.user;
 
-    // Arama modu: aynı ekranda (route push yok) dropoff yazma + sonuç listesi
-    if (_searching) {
-      return PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) { if (!didPop) _closeSearch(); },
-        child: _buildSearchScaffold(),
-      );
-    }
-
-    return Scaffold(
+    return PopScope(
+      // Arama modundayken geri tuşu ekrandan çıkmaz, aramayı kapatır
+      canPop: !_searching,
+      onPopInvokedWithResult: (didPop, _) { if (!didPop && _searching) _closeSearch(); },
+      child: Scaffold(
       extendBodyBehindAppBar: false,
       appBar: AppBar(
-        title: const Text('FerXGo'),
+        title: Text(_searching ? 'Nereye gidiyorsun?' : 'FerXGo'),
         backgroundColor: FerxgoColors.ink,
-        actions: [
+        leading: _searching
+            ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _closeSearch)
+            : null,
+        actions: _searching
+            ? null
+            : [
           IconButton(
             tooltip: 'Geçmiş yolculuklar',
             onPressed: () => context.push(AppRoutes.customerHistory),
@@ -234,7 +234,8 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       ),
       body: Column(
         children: [
-          // ─── ÜST YARI: HARITA ─────────────────────────────
+          // ─── ÜST YARI: HARITA (arama modunda gizlenir, panele yer açılır) ─
+          if (!_searching)
           Expanded(
             flex: 1,
             child: Stack(
@@ -332,52 +333,56 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 14),
-                    // Başlık + yenile
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              user != null ? 'Selam ${user.name.split(' ').first}' : 'Hoş geldin',
-                              style: const TextStyle(
-                                color: FerxgoColors.textHigh,
-                                fontSize: 18, fontWeight: FontWeight.w800,
+                    // Başlık + yenile (arama modunda gizli)
+                    if (!_searching)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                user != null ? 'Selam ${user.name.split(' ').first}' : 'Hoş geldin',
+                                style: const TextStyle(
+                                  color: FerxgoColors.textHigh,
+                                  fontSize: 18, fontWeight: FontWeight.w800,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          if (_loadingDrivers)
-                            const SizedBox(
-                              width: 18, height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: FerxgoColors.brand),
-                            )
-                          else
-                            IconButton(
-                              onPressed: _loadDrivers,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                              icon: const Icon(Icons.refresh, color: FerxgoColors.textMid),
-                            ),
-                        ],
+                            if (_loadingDrivers)
+                              const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: FerxgoColors.brand),
+                              )
+                            else
+                              IconButton(
+                                onPressed: _loadDrivers,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                icon: const Icon(Icons.refresh, color: FerxgoColors.textMid),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    // İki input: pickup (readonly) + dropoff (tıklanır)
+                    if (!_searching) const SizedBox(height: 10),
+                    // Adres girişleri: pickup (readonly) + dropoff (AYNI SAYFADA yazılabilir)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _AddressInputs(
-                        pickupLabel: _pickupAddress ?? (_hasFix ? 'Mevcut konumum' : 'Konum aranıyor…'),
-                        onPickupTap: () async {
-                          await _resolveLocation();
-                          await _loadDrivers();
-                        },
-                        onDropoffTap: _openSearch,
-                      ),
+                      child: _addressInputs(),
                     ),
                     const SizedBox(height: 10),
-                    // Sürücü listesi (kalan alan)
-                    Expanded(child: _buildList(null)),
+                    // Liste: arama modunda sonuçlar, değilse yakındaki sürücüler
+                    Expanded(
+                      child: _searching
+                          ? Column(
+                              children: [
+                                if (_searchBusy)
+                                  const LinearProgressIndicator(minHeight: 2, color: FerxgoColors.brand, backgroundColor: FerxgoColors.inkMuted),
+                                Expanded(child: _buildSearchResults()),
+                              ],
+                            )
+                          : _buildList(null),
+                    ),
                   ],
                 ),
               ),
@@ -385,78 +390,87 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
-  // ─── Arama ekranı (aynı sayfa, route push yok) ────────────
-  Widget _buildSearchScaffold() {
-    return Scaffold(
-      backgroundColor: FerxgoColors.ink,
-      appBar: AppBar(
-        backgroundColor: FerxgoColors.ink,
-        title: const Text('Nereye gidiyorsun?'),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _closeSearch),
+  /// Kalkış (sabit) + varış (aynı sayfada yazılabilir) girişleri.
+  Widget _addressInputs() {
+    return Container(
+      decoration: BoxDecoration(
+        color: FerxgoColors.inkMuted,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _searching ? FerxgoColors.brand : FerxgoColors.line),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Pickup (kalkış) özeti
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: FerxgoColors.inkSoft,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: FerxgoColors.line),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.circle, color: FerxgoColors.brand, size: 12),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _pickupAddress ?? 'Mevcut konumum',
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: FerxgoColors.textMid, fontSize: 13),
-                      ),
+      child: Column(
+        children: [
+          // PICKUP (dokununca konumu yenile)
+          InkWell(
+            onTap: () async { await _resolveLocation(); await _loadDrivers(); },
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              child: Row(
+                children: [
+                  Container(width: 10, height: 10, decoration: const BoxDecoration(color: FerxgoColors.brand, shape: BoxShape.circle)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _pickupAddress ?? (_hasFix ? 'Mevcut konumum' : 'Konum aranıyor…'),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w600, fontSize: 14),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.my_location, color: FerxgoColors.textLow, size: 18),
+                ],
               ),
             ),
-            // Arama alanı
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: TextField(
-                controller: _searchCtrl,
-                focusNode: _searchFocus,
-                style: const TextStyle(color: FerxgoColors.textHigh),
-                onChanged: _onSearchChanged,
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  hintText: 'Adres, mahalle, AVM…',
-                  prefixIcon: const Icon(Icons.search, color: FerxgoColors.textLow),
-                  suffixIcon: _searchCtrl.text.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.close, color: FerxgoColors.textLow),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            setState(() => _searchResults = const []);
-                          },
-                        ),
+          ),
+          const Divider(height: 1, color: FerxgoColors.line, indent: 16, endIndent: 16),
+          // DROPOFF — aynı sayfada canlı yazılabilir alan
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                Container(width: 10, height: 10, decoration: const BoxDecoration(color: FerxgoColors.danger, shape: BoxShape.circle)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _searchCtrl,
+                    focusNode: _searchFocus,
+                    readOnly: !_hasFix,
+                    onTap: _openSearch,
+                    onChanged: _onSearchChanged,
+                    textInputAction: TextInputAction.search,
+                    style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w600, fontSize: 14),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 14),
+                      hintText: 'Nereye gidiyorsun?',
+                      hintStyle: TextStyle(color: FerxgoColors.textLow, fontWeight: FontWeight.w500, fontSize: 14),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                if (_searching && _searchCtrl.text.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      _searchCtrl.clear();
+                      setState(() => _searchResults = const []);
+                    },
+                    child: const Icon(Icons.close, color: FerxgoColors.textLow, size: 18),
+                  )
+                else
+                  const Icon(Icons.arrow_forward, color: FerxgoColors.brand, size: 18),
+              ],
             ),
-            if (_searchBusy)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: LinearProgressIndicator(minHeight: 2, color: FerxgoColors.brand, backgroundColor: FerxgoColors.inkMuted),
-              ),
-            Expanded(child: _buildSearchResults()),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -563,99 +577,6 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   }
 }
 
-// ─── İki input alanı: pickup (readonly) + dropoff (tıklanır) ──
-class _AddressInputs extends StatelessWidget {
-  const _AddressInputs({
-    required this.pickupLabel,
-    required this.onPickupTap,
-    required this.onDropoffTap,
-  });
-
-  final String pickupLabel;
-  final VoidCallback onPickupTap;
-  final VoidCallback onDropoffTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: FerxgoColors.inkMuted,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: FerxgoColors.line),
-      ),
-      child: Column(
-        children: [
-          // PICKUP
-          _Row(
-            dotColor: FerxgoColors.brand,
-            placeholder: pickupLabel,
-            isEmpty: false,
-            trailing: const Icon(Icons.my_location, color: FerxgoColors.textLow, size: 18),
-            onTap: onPickupTap,
-          ),
-          const Divider(height: 1, color: FerxgoColors.line, indent: 16, endIndent: 16),
-          // DROPOFF
-          _Row(
-            dotColor: FerxgoColors.danger,
-            placeholder: 'Nereye gidiyorsun?',
-            isEmpty: true,
-            trailing: const Icon(Icons.arrow_forward, color: FerxgoColors.brand, size: 18),
-            onTap: onDropoffTap,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Row extends StatelessWidget {
-  const _Row({
-    required this.dotColor,
-    required this.placeholder,
-    required this.isEmpty,
-    required this.trailing,
-    required this.onTap,
-  });
-
-  final Color dotColor;
-  final String placeholder;
-  final bool isEmpty;
-  final Widget trailing;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 10, height: 10,
-              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                placeholder,
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: isEmpty ? FerxgoColors.textLow : FerxgoColors.textHigh,
-                  fontWeight: isEmpty ? FontWeight.w500 : FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            trailing,
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.icon, required this.text});
