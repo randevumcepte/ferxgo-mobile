@@ -302,10 +302,12 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 12),
-                    // Başlık + yenile (yazarken gizlenir, yer açılır)
-                    if (!_searchFocus.hasFocus)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                    // Başlık + yenile — yazarken GİZLENİR ama ağaçta kalır (Offstage)
+                    // ki alttaki yazı kutusunun yeri kaymasın, odak/klavye düşmesin.
+                    Offstage(
+                      offstage: _searchFocus.hasFocus,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                         child: Row(
                           children: [
                             Expanded(
@@ -333,7 +335,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                           ],
                         ),
                       ),
-                    if (!_searchFocus.hasFocus) const SizedBox(height: 10),
+                    ),
                     // Adres girişleri: pickup (sabit) + dropoff (AYNI SAYFADA yazılabilir)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
