@@ -37,8 +37,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   /// Ters coğrafi kodlamayla çözülen mevcut konum adresi
   String? _pickupAddress;
 
-  // ─── Aynı ekranda dropoff arama modu ──────────────────────
-  bool _searching = false;
+  // ─── Dropoff canlı arama (aynı ekran — mod/sayfa YOK) ─────
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   Timer? _searchDebounce;
@@ -46,9 +45,13 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   bool _searchBusy = false;
   String? _searchError;
 
+  /// Kutuda ≥2 karakter varsa liste alanında sürücü yerine sonuçlar gösterilir.
+  bool get _showResults => _searchCtrl.text.trim().length >= 2;
+
   @override
   void initState() {
     super.initState();
+    _searchFocus.addListener(() { if (mounted) setState(() {}); });
     WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
 
@@ -92,34 +95,6 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
     ref.read(bookingDraftProvider.notifier).setPickupFromPosition(position, label: address);
   }
 
-  // ─── Dropoff arama (aynı ekran) ───────────────────────────
-  void _openSearch() {
-    if (!_hasFix) {
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(const SnackBar(
-          content: Text('Önce konumunu paylaş, sonra rota seçebiliriz.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: FerxgoColors.inkMuted,
-        ));
-      return;
-    }
-    // Pickup'ı garantiye al (adres varsa onunla)
-    ref.read(bookingDraftProvider.notifier).setPickup(
-      Place(position: _center, displayName: _pickupAddress ?? 'Mevcut konumum'),
-    );
-    setState(() => _searching = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _searchFocus.requestFocus());
-  }
-
-  void _closeSearch() {
-    setState(() {
-      _searching = false;
-      _searchError = null;
-    });
-    FocusScope.of(context).unfocus();
-  }
-
   void _onSearchChanged(String q) {
     _searchDebounce?.cancel();
     if (q.trim().length < 2) {
@@ -144,9 +119,13 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   }
 
   void _pickDropoff(Place p) {
+    // Pickup'ı garantiye al (adres varsa onunla)
+    ref.read(bookingDraftProvider.notifier).setPickup(
+      Place(position: _center, displayName: _pickupAddress ?? 'Mevcut konumum'),
+    );
     ref.read(bookingDraftProvider.notifier).setDropoff(p);
-    setState(() => _searching = false);
     FocusScope.of(context).unfocus();
+    _searchCtrl.clear();
     context.push(AppRoutes.customerBookConfirm);
   }
 
@@ -205,11 +184,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).value?.user;
 
-    return PopScope(
-      // Arama modundayken geri tuşu ekrandan çıkmaz, aramayı kapatır
-      canPop: !_searching,
-      onPopInvokedWithResult: (didPop, _) { if (!didPop && _searching) _closeSearch(); },
-      child: Scaffold(
+    return Scaffold(
       extendBodyBehindAppBar: false,
       appBar: AppBar(
         title: const Text('FerXGo'),
@@ -229,9 +204,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       ),
       body: Column(
         children: [
-          // ─── ÜST: HARITA (arama sırasında da görünür kalır) ─
+          // ─── ÜST: HARITA (hep görünür, değişmez) ─
           Expanded(
-            flex: _searching ? 2 : 1,
+            flex: 1,
             child: Stack(
               children: [
                 FlutterMap(
@@ -315,7 +290,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
 
           // ─── ALT: PANEL (inputlar + sürücü/arama listesi) ─
           Expanded(
-            flex: _searching ? 3 : 1,
+            flex: 1,
             child: Container(
               decoration: const BoxDecoration(
                 color: FerxgoColors.inkSoft,
@@ -328,46 +303,45 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                   children: [
                     const SizedBox(height: 14),
                     // Başlık + yenile (arama modunda gizli)
-                    if (!_searching)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                user != null ? 'Selam ${user.name.split(' ').first}' : 'Hoş geldin',
-                                style: const TextStyle(
-                                  color: FerxgoColors.textHigh,
-                                  fontSize: 18, fontWeight: FontWeight.w800,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              user != null ? 'Selam ${user.name.split(' ').first}' : 'Hoş geldin',
+                              style: const TextStyle(
+                                color: FerxgoColors.textHigh,
+                                fontSize: 18, fontWeight: FontWeight.w800,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            if (_loadingDrivers)
-                              const SizedBox(
-                                width: 18, height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: FerxgoColors.brand),
-                              )
-                            else
-                              IconButton(
-                                onPressed: _loadDrivers,
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                                icon: const Icon(Icons.refresh, color: FerxgoColors.textMid),
-                              ),
-                          ],
-                        ),
+                          ),
+                          if (_loadingDrivers)
+                            const SizedBox(
+                              width: 18, height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: FerxgoColors.brand),
+                            )
+                          else
+                            IconButton(
+                              onPressed: _loadDrivers,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                              icon: const Icon(Icons.refresh, color: FerxgoColors.textMid),
+                            ),
+                        ],
                       ),
-                    if (!_searching) const SizedBox(height: 10),
-                    // Adres girişleri: pickup (readonly) + dropoff (AYNI SAYFADA yazılabilir)
+                    ),
+                    const SizedBox(height: 10),
+                    // Adres girişleri: pickup (sabit) + dropoff (AYNI SAYFADA yazılabilir)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: _addressInputs(),
                     ),
                     const SizedBox(height: 10),
-                    // Liste: arama modunda sonuçlar, değilse yakındaki sürücüler
+                    // Liste: kutuya yazıldıysa adres sonuçları, değilse yakındaki sürücüler
                     Expanded(
-                      child: _searching
+                      child: _showResults
                           ? Column(
                               children: [
                                 if (_searchBusy)
@@ -384,7 +358,6 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
           ),
         ],
       ),
-      ),
     );
   }
 
@@ -394,7 +367,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       decoration: BoxDecoration(
         color: FerxgoColors.inkMuted,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _searching ? FerxgoColors.brand : FerxgoColors.line),
+        border: Border.all(color: _searchFocus.hasFocus ? FerxgoColors.brand : FerxgoColors.line),
       ),
       child: Column(
         children: [
@@ -434,7 +407,6 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                     controller: _searchCtrl,
                     focusNode: _searchFocus,
                     readOnly: !_hasFix,
-                    onTap: _openSearch,
                     onChanged: _onSearchChanged,
                     textInputAction: TextInputAction.search,
                     style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w600, fontSize: 14),
@@ -451,10 +423,11 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (_searching && _searchCtrl.text.isNotEmpty)
+                if (_searchCtrl.text.isNotEmpty)
                   GestureDetector(
                     onTap: () {
                       _searchCtrl.clear();
+                      _searchFocus.unfocus();
                       setState(() => _searchResults = const []);
                     },
                     child: const Icon(Icons.close, color: FerxgoColors.textLow, size: 18),
@@ -558,7 +531,8 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                     driver: list[i],
                     onTap: () {
                       _map.move(list[i].position, 16);
-                      _openSearch();
+                      // Sürücüye dokununca varış alanına odaklan (aynı ekranda yaz)
+                      _searchFocus.requestFocus();
                     },
                     onFavorite: () => _toggleFavorite(list[i]),
                   ),
