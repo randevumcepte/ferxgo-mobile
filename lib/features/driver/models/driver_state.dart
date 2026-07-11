@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/util/json_num.dart';
 import '../../../shared/models/negotiation.dart';
 import '../../customer/models/ride_status.dart' show RideMessage;
 
@@ -64,11 +65,11 @@ class DriverInfo {
   final bool womenOnly;
 
   static DriverInfo fromJson(Map<String, dynamic> json) => DriverInfo(
-        id: (json['id'] as num).toInt(),
+        id: asIntOr(json['id'], 0),
         name: (json['name'] as String?) ?? 'Sürücü',
         availabilityStatus: (json['availability_status'] as String?) ?? 'offline',
-        rating: ((json['rating'] as num?) ?? 0).toDouble(),
-        totalRides: ((json['total_rides'] as num?) ?? 0).toInt(),
+        rating: asDoubleOr(json['rating'], 0),
+        totalRides: asIntOr(json['total_rides'], 0),
         isFemale: (json['is_female'] as bool?) ?? false,
         womenOnly: (json['women_only'] as bool?) ?? false,
       );
@@ -110,14 +111,14 @@ class DriverOffer {
         customerName: (json['customer_name'] as String?) ?? 'Müşteri',
         pickupAddress: (json['pickup_address'] as String?) ?? '',
         pickupPosition: LatLng(
-          ((json['pickup_lat'] as num?) ?? 38.4377).toDouble(),
-          ((json['pickup_lng'] as num?) ?? 27.1428).toDouble(),
+          asDoubleOr(json['pickup_lat'], 38.4377),
+          asDoubleOr(json['pickup_lng'], 27.1428),
         ),
         dropoffAddress: (json['dropoff_address'] as String?) ?? '',
-        distanceKm: ((json['distance_km'] as num?) ?? 0).toDouble(),
-        durationMinutes: ((json['duration_minutes'] as num?) ?? 0).toInt(),
-        estimatedFare: (json['estimated_fare'] as num?)?.toDouble(),
-        secondsRemaining: ((json['seconds_remaining'] as num?) ?? 0).toInt(),
+        distanceKm: asDoubleOr(json['distance_km'], 0),
+        durationMinutes: asIntOr(json['duration_minutes'], 0),
+        estimatedFare: asDoubleOrNull(json['estimated_fare']),
+        secondsRemaining: asIntOr(json['seconds_remaining'], 0),
         negotiation: Negotiation.fromJson(json['negotiation']),
       );
 }
@@ -176,21 +177,21 @@ class DriverActive {
       customerPhone: json['customer_phone'] as String?,
       customerTrustLabel: (json['customer_trust_label'] as String?) ?? '',
       customerIsNew: (json['customer_is_new'] as bool?) ?? false,
-      customerCompletedRides: ((json['customer_completed_rides'] as num?) ?? 0).toInt(),
-      customerNoShows: ((json['customer_no_shows'] as num?) ?? 0).toInt(),
+      customerCompletedRides: asIntOr(json['customer_completed_rides'], 0),
+      customerNoShows: asIntOr(json['customer_no_shows'], 0),
       pickupAddress: (json['pickup_address'] as String?) ?? '',
       pickupPosition: LatLng(
-        ((json['pickup_lat'] as num?) ?? 38.4377).toDouble(),
-        ((json['pickup_lng'] as num?) ?? 27.1428).toDouble(),
+        asDoubleOr(json['pickup_lat'], 38.4377),
+        asDoubleOr(json['pickup_lng'], 27.1428),
       ),
       dropoffAddress: (json['dropoff_address'] as String?) ?? '',
-      distanceKm: ((json['distance_km'] as num?) ?? 0).toDouble(),
-      durationMinutes: ((json['duration_minutes'] as num?) ?? 0).toInt(),
-      estimatedFare: (json['estimated_fare'] as num?)?.toDouble(),
+      distanceKm: asDoubleOr(json['distance_km'], 0),
+      durationMinutes: asIntOr(json['duration_minutes'], 0),
+      estimatedFare: asDoubleOrNull(json['estimated_fare']),
       arrivedAt: d(json['arrived_at']),
       customerConfirmedAt: d(json['customer_confirmed_at']),
       noShowButtonReady: (json['no_show_button_ready'] as bool?) ?? false,
-      noShowCountdownSec: (json['no_show_countdown_sec'] as num?)?.toInt(),
+      noShowCountdownSec: asIntOrNull(json['no_show_countdown_sec']),
       rideStatus: json['ride_status'] as String?,
     );
   }

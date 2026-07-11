@@ -91,10 +91,10 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       setState(() => _result = res);
     } on ApiException catch (e) {
       if (!mounted) return;
-      setState(() => _driversError = '[${e.statusCode}${e.code != null ? ' ${e.code}' : ''}] ${e.message}');
-    } catch (e) {
+      setState(() => _driversError = e.message);
+    } catch (_) {
       if (!mounted) return;
-      setState(() => _driversError = e.toString());
+      setState(() => _driversError = 'Sürücüler yüklenemedi. Bağlantını kontrol edip tekrar dene.');
     } finally {
       if (mounted) setState(() => _loadingDrivers = false);
     }

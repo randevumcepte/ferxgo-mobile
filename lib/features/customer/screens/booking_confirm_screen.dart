@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/util/json_num.dart';
 import '../../../shared/widgets/error_banner.dart';
 import '../../../shared/widgets/price_stepper.dart';
 import '../customer_ride_repository.dart';
@@ -96,7 +97,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         durationMinutes: draft.durationMinutes!,
       );
       // FareCalculator → 'total_fare' anahtarı (subtotal + extras_total)
-      final total = (fare['total_fare'] as num?)?.toDouble();
+      final total = asDoubleOrNull(fare['total_fare']);
       ref.read(bookingDraftProvider.notifier).setRoute(
         distanceKm: draft.distanceKm!,
         durationMinutes: draft.durationMinutes!,

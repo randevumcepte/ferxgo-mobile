@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../core/util/json_num.dart';
+
 /// Fiyat pazarlığı bloğu (inDrive tarzı) — backend `NegotiationPayload` trait'inin
 /// Flutter karşılığı. Hem müşteri (RideStatus) hem sürücü (offer) payload'ında
 /// aynı `negotiation` anahtarı altında gelir. Pazarlıksız eski talepte null olur.
@@ -48,19 +50,18 @@ class Negotiation {
   static Negotiation? fromJson(Object? raw) {
     if (raw is! Map) return null;
     final json = Map<String, dynamic>.from(raw);
-    double? d(Object? v) => (v as num?)?.toDouble();
     return Negotiation(
       state: json['state'] as String?,
-      round: ((json['round'] as num?) ?? 0).toInt(),
-      maxRounds: ((json['max_rounds'] as num?) ?? 4).toInt(),
-      roundsLeft: ((json['rounds_left'] as num?) ?? 0).toInt(),
-      suggestedFare: d(json['suggested_fare']),
-      customerOfferFare: d(json['customer_offer_fare']),
-      driverCounterFare: d(json['driver_counter_fare']),
-      agreedFare: d(json['agreed_fare']),
-      currentPrice: d(json['current_price']),
-      minFare: d(json['min_fare']),
-      maxFare: d(json['max_fare']),
+      round: asIntOr(json['round'], 0),
+      maxRounds: asIntOr(json['max_rounds'], 4),
+      roundsLeft: asIntOr(json['rounds_left'], 0),
+      suggestedFare: asDoubleOrNull(json['suggested_fare']),
+      customerOfferFare: asDoubleOrNull(json['customer_offer_fare']),
+      driverCounterFare: asDoubleOrNull(json['driver_counter_fare']),
+      agreedFare: asDoubleOrNull(json['agreed_fare']),
+      currentPrice: asDoubleOrNull(json['current_price']),
+      minFare: asDoubleOrNull(json['min_fare']),
+      maxFare: asDoubleOrNull(json['max_fare']),
       awaiting: json['awaiting'] as String?,
       currency: (json['currency'] as String?) ?? 'TRY',
     );

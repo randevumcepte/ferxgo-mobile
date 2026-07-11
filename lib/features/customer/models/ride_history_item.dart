@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/util/json_num.dart';
+
 @immutable
 class RideHistoryItem {
   const RideHistoryItem({
@@ -40,9 +42,9 @@ class RideHistoryItem {
       status: json['status'] as String? ?? 'pending',
       pickupAddress: json['pickup_address'] as String? ?? '',
       dropoffAddress: json['dropoff_address'] as String? ?? '',
-      distanceKm: ((json['distance_km'] as num?) ?? 0).toDouble(),
-      durationMinutes: ((json['duration_minutes'] as num?) ?? 0).toInt(),
-      totalFare: (json['total_fare'] as num?)?.toDouble(),
+      distanceKm: asDoubleOr(json['distance_km'], 0),
+      durationMinutes: asIntOr(json['duration_minutes'], 0),
+      totalFare: asDoubleOrNull(json['total_fare']),
       currency: json['currency'] as String?,
       driverName: json['driver_name'] as String?,
       vehicleClass: json['vehicle_class'] as String?,

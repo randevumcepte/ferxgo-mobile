@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/util/json_num.dart';
+
 /// Backend `/customer/drivers/nearby` response item'i + bonus distance/eta.
 @immutable
 class NearbyDriver {
@@ -57,24 +59,24 @@ class NearbyDriver {
 
   static NearbyDriver fromJson(Map<String, dynamic> json, {required LatLng fallback}) {
     return NearbyDriver(
-      id: (json['id'] as num).toInt(),
+      id: asIntOr(json['id'], 0),
       name: (json['name'] as String?) ?? 'Sürücü',
       fullName: (json['full_name'] as String?) ?? '',
       avatar: json['avatar'] as String?,
-      rating: ((json['rating'] as num?) ?? 0).toDouble(),
-      trips: ((json['trips'] as num?) ?? 0).toInt(),
+      rating: asDoubleOr(json['rating'], 0),
+      trips: asIntOr(json['trips'], 0),
       vehicleClass: json['vehicle_class'] as String?,
       vehicleClassSlug: json['vehicle_class_slug'] as String?,
       vehicleLabel: json['vehicle_label'] as String?,
-      vehicleYear: (json['vehicle_year'] as num?)?.toInt(),
+      vehicleYear: asIntOrNull(json['vehicle_year']),
       vehicleColor: json['vehicle_color'] as String?,
       plate: json['plate'] as String?,
-      distanceKm: ((json['distance_km'] as num?) ?? 0).toDouble(),
-      etaMinutes: ((json['eta_minutes'] as num?) ?? 0).toInt(),
+      distanceKm: asDoubleOr(json['distance_km'], 0),
+      etaMinutes: asIntOr(json['eta_minutes'], 0),
       // Backend lat/lng dönerse o, yoksa kullanıcı konumundan offset ile yaklaşıklık
       position: _resolvePosition(json, fallback),
       isFavorite: (json['is_favorite'] as bool?) ?? false,
-      favoriteCount: ((json['favorite_count'] as num?) ?? 0).toInt(),
+      favoriteCount: asIntOr(json['favorite_count'], 0),
       isFemale: (json['is_female'] as bool?) ?? false,
       womenOnly: (json['women_only'] as bool?) ?? false,
     );
@@ -105,8 +107,8 @@ class NearbyDriver {
   }
 
   static LatLng _resolvePosition(Map<String, dynamic> json, LatLng fallback) {
-    final lat = (json['current_lat'] as num?)?.toDouble();
-    final lng = (json['current_lng'] as num?)?.toDouble();
+    final lat = asDoubleOrNull(json['current_lat']);
+    final lng = asDoubleOrNull(json['current_lng']);
     if (lat != null && lng != null) return LatLng(lat, lng);
     return fallback;
   }
