@@ -115,8 +115,10 @@ class CustomerRideRepository {
     double? estimatedFare,
     double? suggestedFare,
     double? customerOfferFare,
-    required int preferredDriverId,
+    int? preferredDriverId,
     List<int> fallbackDriverIds = const [],
+    /// 'auto' → favori-öncelikli otomatik dağıtım ("Hadi Gidelim"); yoksa manuel.
+    String? dispatchMode,
   }) async {
     final res = await _api.postJson('/customer/ride-requests', body: {
       'vehicle_class_slug': vehicleClassSlug,
@@ -131,7 +133,8 @@ class CustomerRideRepository {
       'estimated_fare':  ?estimatedFare,
       'suggested_fare':  ?suggestedFare,
       'customer_offer_fare': ?customerOfferFare,
-      'preferred_driver_id': preferredDriverId,
+      'dispatch_mode':   ?dispatchMode,
+      'preferred_driver_id': ?preferredDriverId,
       'fallback_driver_ids': fallbackDriverIds,
       'kvkk_consent': true,
     });
@@ -174,6 +177,17 @@ class CustomerRideRepository {
   /// Müşteri sürücünün karşı teklifini kabul eder → yolculuk başlar.
   Future<RideStatus> acceptPrice(String publicId, LatLng fallback) async {
     final res = await _api.postJson('/customer/ride-requests/$publicId/accept-price');
+    return RideStatus.fromJson(
+      (res['status'] as Map).cast<String, dynamic>(),
+      fallbackPosition: fallback,
+    );
+  }
+
+  // ─── Auto/havuz akışı ("Hadi Gidelim") ────────────────────
+  /// Eşleşen üye sürücüyü onayla (accept=true) ya da reddet (false).
+  Future<RideStatus> reconfirm(String publicId, bool accept, LatLng fallback) async {
+    final res = await _api.postJson('/customer/ride-requests/$publicId/reconfirm',
+        body: {'accept': accept});
     return RideStatus.fromJson(
       (res['status'] as Map).cast<String, dynamic>(),
       fallbackPosition: fallback,

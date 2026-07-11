@@ -255,6 +255,41 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     }
   }
 
+  // ─── Auto/havuz: eşleşen sürücüyü onayla/reddet ───────────
+  Future<void> _reconfirm(bool accept) async {
+    if (!accept) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: FerxgoColors.inkSoft,
+          title: const Text('Sürücüyü reddet?', style: TextStyle(color: FerxgoColors.textHigh)),
+          content: const Text('Bu sürücüyü onaylamazsan talep iptal edilir.',
+              style: TextStyle(color: FerxgoColors.textMid)),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Vazgeç')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: FerxgoColors.danger, foregroundColor: Colors.white),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Reddet'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    setState(() => _busyAction = true);
+    try {
+      final s = await ref.read(customerRideRepositoryProvider)
+          .reconfirm(widget.publicId, accept, LocationService.defaultCenter);
+      if (!mounted) return;
+      setState(() => _status = s);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busyAction = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = _status;
@@ -288,22 +323,45 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
         color: FerxgoColors.warning,
       );
     }
-    if (s.isCancelled) {
+    if (s.isCancelled || s.isExhausted) {
       return _Terminal(
         icon: Icons.cancel_outlined,
-        title: 'Talep iptal edildi',
-        message: 'Talebin iptal edildi.',
+        title: s.isExhausted ? 'Sürücü bulunamadı' : 'Talep iptal edildi',
+        message: s.isExhausted
+            ? 'Uygun sürücü çıkmadı. Tekrar deneyebilirsin.'
+            : 'Talebin iptal edildi.',
         ctaText: 'Ana ekrana dön',
         onTap: () => context.go(AppRoutes.customerHome),
         color: FerxgoColors.danger,
       );
     }
-    if (s.isPending) {
+    if (s.isAwaitingReconfirm) {
+      return _Reconfirm(
+        status: s,
+        busy: _busyAction,
+        onAccept: _busyAction ? null : () => _reconfirm(true),
+        onDecline: _busyAction ? null : () => _reconfirm(false),
+        error: _error,
+        onErrorClose: () => setState(() => _error = null),
+      );
+    }
+    if (s.isSearching) {
       return _Pending(
         status: s,
         onCancel: _busyAction ? null : _cancel,
         onAcceptPrice: _busyAction ? null : _acceptPrice,
         onCounterPrice: _busyAction ? null : () => _counterPrice(s.negotiation!),
+        error: _error,
+        onErrorClose: () => setState(() => _error = null),
+      );
+    }
+    // Güvenlik: accepted ama sürücü bilgisi henüz gelmediyse arama ekranı göster
+    if (s.acceptedDriver == null) {
+      return _Pending(
+        status: s,
+        onCancel: _busyAction ? null : _cancel,
+        onAcceptPrice: null,
+        onCounterPrice: null,
         error: _error,
         onErrorClose: () => setState(() => _error = null),
       );
@@ -388,9 +446,11 @@ class _Pending extends StatelessWidget {
           Text(
             awaitingDecision
                 ? 'Sürücü karşı teklif verdi'
-                : status.offeredDriver != null
-                    ? 'Teklif gönderildi: ${status.offeredDriver!.name}'
-                    : 'Sürücü aranıyor…',
+                : status.isPoolExpanded
+                    ? (status.isFavoriteWave ? 'Favori sürücülerine soruldu' : 'Yakındaki sürücülere soruldu')
+                    : status.offeredDriver != null
+                        ? 'Teklif gönderildi: ${status.offeredDriver!.name}'
+                        : 'Sürücü aranıyor…',
             textAlign: TextAlign.center,
             style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w700),
           ),
@@ -398,9 +458,11 @@ class _Pending extends StatelessWidget {
           Text(
             awaitingDecision
                 ? 'Kabul et, karşı teklif ver ya da vazgeç.'
-                : status.totalCandidates > 0
-                    ? 'Aday ${status.currentIndex + 1}/${status.totalCandidates}'
-                    : 'Çevredeki sürücülere haber veriliyor.',
+                : status.isPoolExpanded
+                    ? 'Teklifini kabul eden ilk sürücü seninle eşleştirilecek.'
+                    : status.totalCandidates > 0
+                        ? 'Aday ${status.currentIndex + 1}/${status.totalCandidates}'
+                        : 'Çevredeki sürücülere haber veriliyor.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: FerxgoColors.textLow, fontSize: 13),
           ),
@@ -503,6 +565,156 @@ class _NegotiationCard extends StatelessWidget {
           ),
         ],
       );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  RECONFIRM (auto/havuz: eşleşen sürücüyü onayla/reddet)
+// ─────────────────────────────────────────────────────────────
+class _Reconfirm extends StatelessWidget {
+  const _Reconfirm({
+    required this.status,
+    required this.busy,
+    required this.onAccept,
+    required this.onDecline,
+    required this.error,
+    required this.onErrorClose,
+  });
+  final RideStatus status;
+  final bool busy;
+  final VoidCallback? onAccept;
+  final VoidCallback? onDecline;
+  final String? error;
+  final VoidCallback onErrorClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final driver = status.acceptedDriver;
+    final neg = status.negotiation;
+    final price = neg?.currentPrice ?? neg?.customerOfferFare;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                  color: FerxgoColors.success.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.how_to_reg, color: FerxgoColors.success, size: 32),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Text('Sürücü bulundu!',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: FerxgoColors.textHigh, fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            status.isFavoriteWave
+                ? 'Favori sürücün teklifini kabul etti. Onaylıyor musun?'
+                : 'Bir üye sürücü teklifini kabul etti. Onaylıyor musun?',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: FerxgoColors.textLow, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+
+          // Sürücü kartı
+          if (driver != null)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: FerxgoColors.inkSoft,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48, height: 48,
+                    decoration: BoxDecoration(
+                      color: FerxgoColors.brand.withValues(alpha: 0.16),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.person, color: FerxgoColors.brand),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(driver.fullName.isNotEmpty ? driver.fullName : driver.name,
+                          style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 16, fontWeight: FontWeight.w800),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.star, color: FerxgoColors.brand, size: 13),
+                            const SizedBox(width: 2),
+                            Text(driver.rating.toStringAsFixed(1),
+                              style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12)),
+                            if (driver.vehicleClass != null) ...[
+                              const SizedBox(width: 8),
+                              Flexible(child: Text(driver.vehicleClass!,
+                                style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
+                                overflow: TextOverflow.ellipsis)),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (price != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text('${price.toStringAsFixed(0)} ₺',
+                          style: const TextStyle(color: FerxgoColors.brand, fontSize: 20, fontWeight: FontWeight.w900)),
+                        const Text('anlaşılan',
+                          style: TextStyle(color: FerxgoColors.textLow, fontSize: 10)),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+
+          const Spacer(),
+          if (error != null) ErrorBanner(message: error!, onClose: onErrorClose),
+          const SizedBox(height: 8),
+
+          FilledButton.icon(
+            onPressed: onAccept,
+            icon: const Icon(Icons.check_circle),
+            label: Text(price != null ? 'Onayla · ${price.toStringAsFixed(0)} ₺' : 'Onayla'),
+            style: FilledButton.styleFrom(
+              backgroundColor: FerxgoColors.success, foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 54),
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: onDecline,
+            icon: const Icon(Icons.close, color: FerxgoColors.danger),
+            label: const Text('Reddet', style: TextStyle(color: FerxgoColors.danger)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: FerxgoColors.danger),
+              minimumSize: const Size(double.infinity, 50),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────

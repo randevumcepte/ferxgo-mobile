@@ -19,9 +19,12 @@ class RideStatus {
     required this.customerConfirmedAt,
     required this.noShowAt,
     required this.negotiation,
+    required this.isFavoriteWave,
+    required this.reconfirmRequiredAt,
+    required this.customerReconfirmedAt,
   });
 
-  /// pending | accepted | expired | cancelled
+  /// pending | pool_expanded | awaiting_customer_reconfirm | accepted | expired | cancelled | exhausted
   final String status;
   final int rejectionCount;
   final int currentIndex;
@@ -35,11 +38,26 @@ class RideStatus {
   final DateTime? noShowAt;
   final Negotiation? negotiation;
 
+  /// Auto ("Hadi Gidelim") dağıtımı — favori dalgası mı, yakın havuz mu
+  final bool isFavoriteWave;
+  final DateTime? reconfirmRequiredAt;
+  final DateTime? customerReconfirmedAt;
+
   bool get isPending   => status == 'pending';
   bool get isAccepted  => status == 'accepted';
   bool get isExpired   => status == 'expired';
   bool get isCancelled => status == 'cancelled';
-  bool get isTerminal  => isExpired || isCancelled;
+  bool get isExhausted => status == 'exhausted';
+  bool get isTerminal  => isExpired || isCancelled || isExhausted;
+
+  /// Auto/havuz: teklif online favori/yakın sürücülere yayıldı, cevap bekleniyor
+  bool get isPoolExpanded => status == 'pool_expanded';
+
+  /// Eşleşen üye sürücü bulundu, yolcunun onayı/reddi bekleniyor
+  bool get isAwaitingReconfirm => status == 'awaiting_customer_reconfirm';
+
+  /// "Sürücü aranıyor" ekranı gösterilecek durumlar
+  bool get isSearching => isPending || isPoolExpanded;
 
   /// Sürücü vardı, müşteri henüz "gördüm" demedi
   bool get awaitingCustomerConfirm =>
@@ -68,6 +86,9 @@ class RideStatus {
       customerConfirmedAt: _parseDate(json['customer_confirmed_at']),
       noShowAt: _parseDate(json['no_show_at']),
       negotiation: Negotiation.fromJson(json['negotiation']),
+      isFavoriteWave: (json['is_favorite_wave'] as bool?) ?? false,
+      reconfirmRequiredAt: _parseDate(json['reconfirm_required_at']),
+      customerReconfirmedAt: _parseDate(json['customer_reconfirmed_at']),
     );
   }
 

@@ -113,25 +113,29 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     }
   }
 
-  Future<void> _submit() async {
+  /// [auto] true → "Hadi Gidelim": sürücü seçmeden favori-öncelikli otomatik dağıtım.
+  /// false → manuel: seçilen sürücüye (preferred) + fallback'ler.
+  Future<void> _submit({required bool auto}) async {
     final draft = ref.read(bookingDraftProvider);
     if (!_kvkk) {
       setState(() => _error = 'KVKK onayını işaretlemen gerekiyor.');
       return;
     }
-    if (_selectedDriverId == null) {
-      setState(() => _error = 'Bir sürücü seç.');
+    if (!auto && _selectedDriverId == null) {
+      setState(() => _error = 'Bir sürücü seç ya da "Hadi Gidelim" ile otomatik gönder.');
       return;
     }
     if (_selectedClass == null || !draft.hasRoute) return;
 
     setState(() { _busySubmit = true; _error = null; });
     try {
-      final fallback = (_nearby?.drivers ?? const <NearbyDriver>[])
-          .map((d) => d.id)
-          .where((id) => id != _selectedDriverId)
-          .take(5)
-          .toList();
+      final fallback = auto
+          ? const <int>[]
+          : (_nearby?.drivers ?? const <NearbyDriver>[])
+              .map((d) => d.id)
+              .where((id) => id != _selectedDriverId)
+              .take(5)
+              .toList();
 
       final res = await ref.read(customerRideRepositoryProvider).createRequest(
         vehicleClassSlug: _selectedClass!.slug,
@@ -144,7 +148,8 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         estimatedFare: draft.estimatedFare,
         suggestedFare: draft.estimatedFare,
         customerOfferFare: _offerFare ?? draft.estimatedFare,
-        preferredDriverId: _selectedDriverId!,
+        dispatchMode: auto ? 'auto' : null,
+        preferredDriverId: auto ? null : _selectedDriverId,
         fallbackDriverIds: fallback,
       );
 
@@ -233,8 +238,8 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
               ),
             const SizedBox(height: 18),
 
-            // Sürücü seçimi
-            const Text('Sürücü seç',
+            // Sürücü seçimi (opsiyonel — "Hadi Gidelim" için gerekmez)
+            const Text('Sürücü seç (opsiyonel)',
               style: TextStyle(color: FerxgoColors.textMid, fontSize: 13, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
@@ -288,11 +293,29 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
             if (_error != null) ErrorBanner(message: _error!, onClose: () => setState(() => _error = null)),
             const SizedBox(height: 12),
 
-            FilledButton(
-              onPressed: _busySubmit ? null : _submit,
-              child: _busySubmit
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.black))
-                  : const Text('Talebi gönder'),
+            // Birincil: Hadi Gidelim (favori-öncelikli otomatik dağıtım)
+            FilledButton.icon(
+              onPressed: _busySubmit ? null : () => _submit(auto: true),
+              icon: _busySubmit
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.black))
+                  : const Text('🔥', style: TextStyle(fontSize: 18)),
+              label: const Text('Hadi Gidelim'),
+            ),
+            const SizedBox(height: 6),
+            Center(
+              child: Text(
+                'Favori sürücülerin öncelikli; yoksa en yakın müsait sürücü',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // İkincil: seçili sürücüye gönder (manuel)
+            OutlinedButton.icon(
+              onPressed: (_busySubmit || _selectedDriverId == null) ? null : () => _submit(auto: false),
+              icon: const Icon(Icons.person_pin, size: 18),
+              label: const Text('Sadece seçili sürücüye gönder'),
             ),
           ],
         ),
