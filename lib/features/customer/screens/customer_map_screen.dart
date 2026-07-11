@@ -48,6 +48,11 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   /// Kutuda ≥2 karakter varsa liste alanında sürücü yerine sonuçlar gösterilir.
   bool get _showResults => _searchCtrl.text.trim().length >= 2;
 
+  /// Arama aktif (odak VEYA sonuç var). Düzeni buna bağladık: kaydırınca klavye
+  /// kapanıp odak düşse bile sonuç dururken küçük-harita/büyük-panel korunur —
+  /// harita büyüyüp sonuçlar daralmaz.
+  bool get _searchActive => _searchFocus.hasFocus || _showResults;
+
   @override
   void initState() {
     super.initState();
@@ -204,9 +209,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       ),
       body: Column(
         children: [
-          // ─── ÜST: HARITA (yazarken küçülür ama görünür kalır) ─
+          // ─── ÜST: HARITA (arama aktifken küçülür ama görünür kalır) ─
           Expanded(
-            flex: _searchFocus.hasFocus ? 2 : 5,
+            flex: _searchActive ? 2 : 5,
             child: Stack(
               children: [
                 FlutterMap(
@@ -288,9 +293,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
             ),
           ),
 
-          // ─── ALT: PANEL (yazarken büyür — sonuçlar klavye üstünde görünsün) ─
+          // ─── ALT: PANEL (arama aktifken büyür — sonuçlar rahat görünsün) ─
           Expanded(
-            flex: _searchFocus.hasFocus ? 8 : 5,
+            flex: _searchActive ? 8 : 5,
             child: Container(
               decoration: const BoxDecoration(
                 color: FerxgoColors.inkSoft,
@@ -305,7 +310,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                     // Başlık + yenile — yazarken GİZLENİR ama ağaçta kalır (Offstage)
                     // ki alttaki yazı kutusunun yeri kaymasın, odak/klavye düşmesin.
                     Offstage(
-                      offstage: _searchFocus.hasFocus,
+                      offstage: _searchActive,
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                         child: Row(
