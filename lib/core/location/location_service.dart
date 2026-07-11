@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -6,6 +7,41 @@ import 'package:latlong2/latlong.dart';
 class LocationService {
   /// İzmir Alsancak — izin yoksa veya konum alınamazsa harita merkezi.
   static const LatLng defaultCenter = LatLng(38.4377, 27.1428);
+
+  /// Koordinattan okunur kısa adres üretir (ör. "İzmir Aydın Yolu, İnönü Mah.").
+  /// Cihazın yerel geocoder'ını kullanır; başarısızsa null döner (UI fallback gösterir).
+  Future<String?> reverseGeocode(LatLng pos) async {
+    try {
+      final marks = await placemarkFromCoordinates(
+        pos.latitude,
+        pos.longitude,
+      ).timeout(const Duration(seconds: 5));
+      if (marks.isEmpty) return null;
+      return _composeAddress(marks.first);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _composeAddress(Placemark p) {
+    final seen = <String>{};
+    final parts = <String>[];
+    void add(String? s) {
+      final v = (s ?? '').trim();
+      if (v.isNotEmpty && seen.add(v.toLowerCase())) parts.add(v);
+    }
+
+    add(p.thoroughfare);          // cadde/sokak adı
+    add(p.subLocality);           // mahalle
+    add(p.subAdministrativeArea); // ilçe
+    if (parts.isEmpty) {
+      add(p.street);
+      add(p.locality);
+      add(p.administrativeArea);
+    }
+    if (parts.isEmpty) return null;
+    return parts.take(2).join(', ');
+  }
 
   /// Mevcut izni kontrol et + gerekirse iste. Sonra son konumu döndür.
   ///

@@ -9,7 +9,6 @@ import '../../features/auth/screens/driver_login_screen.dart';
 import '../../features/customer/screens/booking_confirm_screen.dart';
 import '../../features/customer/screens/customer_history_screen.dart';
 import '../../features/customer/screens/customer_map_screen.dart';
-import '../../features/customer/screens/dropoff_search_screen.dart';
 import '../../features/customer/screens/ride_tracking_screen.dart';
 import '../../features/driver/screens/driver_home_screen.dart';
 import '../../features/mode_select/mode_select_screen.dart';
@@ -116,7 +115,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.driverLogin,         builder: (_, _) => const DriverLoginScreen()),
       GoRoute(path: AppRoutes.customerHome,        builder: (_, _) => const CustomerMapScreen()),
       GoRoute(path: AppRoutes.customerHistory,     builder: (_, _) => const CustomerHistoryScreen()),
-      GoRoute(path: AppRoutes.customerBookDropoff, builder: (_, _) => const DropoffSearchScreen()),
       GoRoute(path: AppRoutes.customerBookConfirm, builder: (_, _) => const BookingConfirmScreen()),
       GoRoute(
         path: '${AppRoutes.customerRideBase}/:publicId',

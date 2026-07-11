@@ -178,7 +178,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         title: const Text('Talebi onayla'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go(AppRoutes.customerBookDropoff),
+          onPressed: () => context.go(AppRoutes.customerHome),
         ),
       ),
       body: SafeArea(

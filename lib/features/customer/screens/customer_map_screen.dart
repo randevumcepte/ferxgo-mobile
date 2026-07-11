@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,10 +34,30 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   NearbyResult? _result;
   bool _womenOnlyFilter = false;
 
+  /// Ters coğrafi kodlamayla çözülen mevcut konum adresi
+  String? _pickupAddress;
+
+  // ─── Aynı ekranda dropoff arama modu ──────────────────────
+  bool _searching = false;
+  final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+  Timer? _searchDebounce;
+  List<Place> _searchResults = const [];
+  bool _searchBusy = false;
+  String? _searchError;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchCtrl.dispose();
+    _searchFocus.dispose();
+    super.dispose();
   }
 
   Future<void> _bootstrap() async {
@@ -56,12 +78,22 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
         _map.move(position, 14);
         // Booking draft'a pickup'ı yaz — onay ekranında kullanılacak
         ref.read(bookingDraftProvider.notifier).setPickupFromPosition(position);
+        _resolveAddress(position);
       case LocationError(:final reason):
         setState(() => _locationError = reason.userMessage);
     }
   }
 
-  void _startBooking() {
+  /// Konumun okunur adresini çöz + booking draft'ı gerçek adresle güncelle.
+  Future<void> _resolveAddress(LatLng position) async {
+    final address = await ref.read(locationServiceProvider).reverseGeocode(position);
+    if (!mounted || address == null || address.isEmpty) return;
+    setState(() => _pickupAddress = address);
+    ref.read(bookingDraftProvider.notifier).setPickupFromPosition(position, label: address);
+  }
+
+  // ─── Dropoff arama (aynı ekran) ───────────────────────────
+  void _openSearch() {
     if (!_hasFix) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
@@ -72,11 +104,50 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
         ));
       return;
     }
-    // Pickup'ı garantiye al
+    // Pickup'ı garantiye al (adres varsa onunla)
     ref.read(bookingDraftProvider.notifier).setPickup(
-      Place(position: _center, displayName: 'Mevcut konumum'),
+      Place(position: _center, displayName: _pickupAddress ?? 'Mevcut konumum'),
     );
-    context.push(AppRoutes.customerBookDropoff);
+    setState(() => _searching = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _searchFocus.requestFocus());
+  }
+
+  void _closeSearch() {
+    setState(() {
+      _searching = false;
+      _searchError = null;
+    });
+    FocusScope.of(context).unfocus();
+  }
+
+  void _onSearchChanged(String q) {
+    _searchDebounce?.cancel();
+    if (q.trim().length < 2) {
+      setState(() { _searchResults = const []; _searchError = null; });
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () => _runSearch(q));
+  }
+
+  Future<void> _runSearch(String q) async {
+    setState(() { _searchBusy = true; _searchError = null; });
+    try {
+      final list = await ref.read(customerRideRepositoryProvider).searchPlaces(q);
+      if (!mounted) return;
+      setState(() => _searchResults = list);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _searchError = 'Arama yapılamadı, ağını kontrol et.');
+    } finally {
+      if (mounted) setState(() => _searchBusy = false);
+    }
+  }
+
+  void _pickDropoff(Place p) {
+    ref.read(bookingDraftProvider.notifier).setDropoff(p);
+    setState(() => _searching = false);
+    FocusScope.of(context).unfocus();
+    context.push(AppRoutes.customerBookConfirm);
   }
 
   Future<void> _loadDrivers() async {
@@ -133,6 +204,15 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).value?.user;
+
+    // Arama modu: aynı ekranda (route push yok) dropoff yazma + sonuç listesi
+    if (_searching) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) { if (!didPop) _closeSearch(); },
+        child: _buildSearchScaffold(),
+      );
+    }
 
     return Scaffold(
       extendBodyBehindAppBar: false,
@@ -287,12 +367,12 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: _AddressInputs(
-                        pickupLabel: _hasFix ? 'Mevcut konumum' : 'Konum aranıyor…',
+                        pickupLabel: _pickupAddress ?? (_hasFix ? 'Mevcut konumum' : 'Konum aranıyor…'),
                         onPickupTap: () async {
                           await _resolveLocation();
                           await _loadDrivers();
                         },
-                        onDropoffTap: _startBooking,
+                        onDropoffTap: _openSearch,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -304,6 +384,119 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ─── Arama ekranı (aynı sayfa, route push yok) ────────────
+  Widget _buildSearchScaffold() {
+    return Scaffold(
+      backgroundColor: FerxgoColors.ink,
+      appBar: AppBar(
+        backgroundColor: FerxgoColors.ink,
+        title: const Text('Nereye gidiyorsun?'),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _closeSearch),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Pickup (kalkış) özeti
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: FerxgoColors.inkSoft,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: FerxgoColors.line),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.circle, color: FerxgoColors.brand, size: 12),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _pickupAddress ?? 'Mevcut konumum',
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: FerxgoColors.textMid, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Arama alanı
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: TextField(
+                controller: _searchCtrl,
+                focusNode: _searchFocus,
+                style: const TextStyle(color: FerxgoColors.textHigh),
+                onChanged: _onSearchChanged,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Adres, mahalle, AVM…',
+                  prefixIcon: const Icon(Icons.search, color: FerxgoColors.textLow),
+                  suffixIcon: _searchCtrl.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.close, color: FerxgoColors.textLow),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() => _searchResults = const []);
+                          },
+                        ),
+                ),
+              ),
+            ),
+            if (_searchBusy)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: LinearProgressIndicator(minHeight: 2, color: FerxgoColors.brand, backgroundColor: FerxgoColors.inkMuted),
+              ),
+            Expanded(child: _buildSearchResults()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchResults() {
+    if (_searchError != null) {
+      return Center(child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Text(_searchError!, style: const TextStyle(color: FerxgoColors.danger), textAlign: TextAlign.center),
+      ));
+    }
+    if (_searchCtrl.text.trim().length < 2) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text('Aramaya başla — örn. "Konak Pier"', style: TextStyle(color: FerxgoColors.textLow)),
+      ));
+    }
+    if (_searchResults.isEmpty && !_searchBusy) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text('Sonuç yok', style: TextStyle(color: FerxgoColors.textLow)),
+      ));
+    }
+    return ListView.separated(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      itemCount: _searchResults.length,
+      separatorBuilder: (_, _) => const Divider(height: 1, color: FerxgoColors.line),
+      itemBuilder: (_, i) => ListTile(
+        leading: const Icon(Icons.place, color: FerxgoColors.brand),
+        title: Text(_searchResults[i].shortName,
+          maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w600),
+        ),
+        subtitle: _searchResults[i].secondaryName.isEmpty
+            ? null
+            : Text(_searchResults[i].secondaryName,
+                maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
+              ),
+        onTap: () => _pickDropoff(_searchResults[i]),
       ),
     );
   }
@@ -357,7 +550,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                     driver: list[i],
                     onTap: () {
                       _map.move(list[i].position, 16);
-                      _startBooking();
+                      _openSearch();
                     },
                     onFavorite: () => _toggleFavorite(list[i]),
                   ),
