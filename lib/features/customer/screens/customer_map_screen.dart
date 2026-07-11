@@ -212,14 +212,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       child: Scaffold(
       extendBodyBehindAppBar: false,
       appBar: AppBar(
-        title: Text(_searching ? 'Nereye gidiyorsun?' : 'FerXGo'),
+        title: const Text('FerXGo'),
         backgroundColor: FerxgoColors.ink,
-        leading: _searching
-            ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _closeSearch)
-            : null,
-        actions: _searching
-            ? null
-            : [
+        actions: [
           IconButton(
             tooltip: 'Geçmiş yolculuklar',
             onPressed: () => context.push(AppRoutes.customerHistory),
@@ -234,10 +229,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       ),
       body: Column(
         children: [
-          // ─── ÜST YARI: HARITA (arama modunda gizlenir, panele yer açılır) ─
-          if (!_searching)
+          // ─── ÜST: HARITA (arama sırasında da görünür kalır) ─
           Expanded(
-            flex: 1,
+            flex: _searching ? 2 : 1,
             child: Stack(
               children: [
                 FlutterMap(
@@ -319,9 +313,9 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
             ),
           ),
 
-          // ─── ALT YARI: SABİT PANEL (inputlar + sürücü listesi) ─
+          // ─── ALT: PANEL (inputlar + sürücü/arama listesi) ─
           Expanded(
-            flex: 1,
+            flex: _searching ? 3 : 1,
             child: Container(
               decoration: const BoxDecoration(
                 color: FerxgoColors.inkSoft,
