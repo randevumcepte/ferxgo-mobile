@@ -32,7 +32,6 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   String? _locationError;
   String? _driversError;
   NearbyResult? _result;
-  bool _womenOnlyFilter = false;
 
   /// Ters coğrafi kodlamayla çözülen mevcut konum adresi
   String? _pickupAddress;
@@ -152,36 +151,6 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       setState(() => _driversError = 'Sürücüler yüklenemedi. Bağlantını kontrol edip tekrar dene.');
     } finally {
       if (mounted) setState(() => _loadingDrivers = false);
-    }
-  }
-
-  void _replaceDriver(int id, NearbyDriver updated) {
-    final res = _result;
-    if (res == null) return;
-    setState(() {
-      _result = NearbyResult(
-        drivers: res.drivers.map((x) => x.id == id ? updated : x).toList(growable: false),
-        totalOnline: res.totalOnline,
-      );
-    });
-  }
-
-  /// Favori ekle/çıkar — iyimser güncelle, hata olursa geri al.
-  Future<void> _toggleFavorite(NearbyDriver d) async {
-    final repo = ref.read(customerRideRepositoryProvider);
-    final wasFav = d.isFavorite;
-    final nextCount = wasFav
-        ? (d.favoriteCount > 0 ? d.favoriteCount - 1 : 0)
-        : d.favoriteCount + 1;
-    _replaceDriver(d.id, d.copyWith(isFavorite: !wasFav, favoriteCount: nextCount));
-    try {
-      if (wasFav) {
-        await repo.removeFavorite(d.id);
-      } else {
-        await repo.addFavorite(d.id);
-      }
-    } catch (_) {
-      if (mounted) _replaceDriver(d.id, d); // geri al
     }
   }
 
@@ -352,7 +321,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                       child: _addressInputs(),
                     ),
                     const SizedBox(height: 10),
-                    // Liste: kutuya yazıldıysa adres sonuçları, değilse yakındaki sürücüler
+                    // Yazıldıysa adres sonuçları; değilse sade yönlendirme (sürücü listesi yok)
                     Expanded(
                       child: _showResults
                           ? Column(
@@ -362,7 +331,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                                 Expanded(child: _buildSearchResults()),
                               ],
                             )
-                          : _buildList(null),
+                          : _buildHomeHint(),
                     ),
                   ],
                 ),
@@ -495,65 +464,35 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
     );
   }
 
-  Widget _buildList(ScrollController? c) {
+  /// Ana ekran alt paneli — sürücü listesi yok. Sade yönlendirme.
+  Widget _buildHomeHint() {
     if (_driversError != null) {
-      return ListView(controller: c, padding: const EdgeInsets.all(16), children: [
-        ErrorBanner(message: _driversError ?? 'Sürücüler yüklenemedi.', onClose: () => setState(() => _driversError = null)),
-        const SizedBox(height: 12),
-        FilledButton(onPressed: _loadDrivers, child: const Text('Yeniden yükle')),
+      return ListView(padding: const EdgeInsets.all(16), children: [
+        ErrorBanner(message: _driversError ?? 'Bir sorun oldu.', onClose: () => setState(() => _driversError = null)),
       ]);
     }
-
-    final all = _result?.drivers ?? const <NearbyDriver>[];
-    if (_loadingDrivers && all.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: FerxgoColors.brand));
-    }
-
-    final list = _womenOnlyFilter ? all.where((d) => d.isFemale).toList() : all;
-
-    return Column(
-      children: [
-        _WomenFilterBar(
-          active: _womenOnlyFilter,
-          onToggle: () => setState(() => _womenOnlyFilter = !_womenOnlyFilter),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.local_taxi, color: FerxgoColors.textLow, size: 40),
+            const SizedBox(height: 12),
+            const Text(
+              'Nereye gideceğini yaz, teklifini ver.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: FerxgoColors.textMid, fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Favori sürücün, yakındakiler ya da tümüne teklifini gönderirsin.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12, height: 1.4),
+            ),
+          ],
         ),
-        Expanded(
-          child: list.isEmpty
-              ? ListView(controller: c, padding: const EdgeInsets.all(20), children: [
-                  Center(child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.search_off, color: FerxgoColors.textLow, size: 36),
-                        const SizedBox(height: 12),
-                        Text(
-                          _womenOnlyFilter
-                              ? 'Çevrende şu an kadın sürücü yok. Filtreyi kaldırıp dene.'
-                              : 'Çevrede şu an müsait sürücü bulamadık.',
-                          style: const TextStyle(color: FerxgoColors.textMid),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  )),
-                ])
-              : ListView.separated(
-                  controller: c,
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
-                  itemBuilder: (_, i) => _DriverTile(
-                    driver: list[i],
-                    onTap: () {
-                      _map.move(list[i].position, 16);
-                      // Sürücüye dokununca varış alanına odaklan (aynı ekranda yaz)
-                      _searchFocus.requestFocus();
-                    },
-                    onFavorite: () => _toggleFavorite(list[i]),
-                  ),
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemCount: list.length,
-                ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -636,202 +575,3 @@ class _DriverPinIcon extends StatelessWidget {
   }
 }
 
-class _DriverTile extends StatelessWidget {
-  const _DriverTile({required this.driver, required this.onTap, this.onFavorite});
-  final NearbyDriver driver;
-  final VoidCallback onTap;
-  final VoidCallback? onFavorite;
-
-  static const Color _pink = Color(0xFFFB7185);
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: FerxgoColors.inkMuted,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-          child: Row(
-            children: [
-              _Avatar(url: driver.avatar, fallback: driver.fullName),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(driver.name,
-                            style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w700),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.star, color: FerxgoColors.brand, size: 14),
-                        const SizedBox(width: 2),
-                        Text(driver.rating.toStringAsFixed(1),
-                          style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12),
-                        ),
-                        if (driver.isFemale) ...[
-                          const SizedBox(width: 6),
-                          _Badge(
-                            text: '👩 Kadın',
-                            color: _pink,
-                            tooltip: driver.womenOnly ? 'Kadın sürücü · sadece kadın yolcu alır' : 'Kadın sürücü',
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [
-                        if (driver.vehicleClass != null) driver.vehicleClass,
-                        if (driver.vehicleLabel != null && driver.vehicleLabel!.isNotEmpty) driver.vehicleLabel,
-                      ].whereType<String>().join(' · '),
-                      style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (driver.favoriteCount > 0) ...[
-                      const SizedBox(height: 4),
-                      Text('♥ ${driver.favoriteCount} favori',
-                        style: const TextStyle(color: _pink, fontSize: 11, fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 4),
-              if (onFavorite != null)
-                IconButton(
-                  onPressed: onFavorite,
-                  visualDensity: VisualDensity.compact,
-                  tooltip: driver.isFavorite ? 'Favorilerden çıkar' : 'Favori şoför yap',
-                  icon: Icon(
-                    driver.isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: driver.isFavorite ? _pink : FerxgoColors.textLow,
-                    size: 22,
-                  ),
-                ),
-              const SizedBox(width: 4),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('${driver.etaMinutes} dk',
-                    style: const TextStyle(color: FerxgoColors.brand, fontSize: 16, fontWeight: FontWeight.w800),
-                  ),
-                  Text('${driver.distanceKm.toStringAsFixed(1)} km',
-                    style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Küçük renkli rozet (Kadın sürücü vb.)
-class _Badge extends StatelessWidget {
-  const _Badge({required this.text, required this.color, this.tooltip});
-  final String text;
-  final Color color;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final pill = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
-      ),
-      child: Text(text, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700)),
-    );
-    return tooltip != null ? Tooltip(message: tooltip!, child: pill) : pill;
-  }
-}
-
-/// Kadın sürücü filtre çubuğu (liste başlığı)
-class _WomenFilterBar extends StatelessWidget {
-  const _WomenFilterBar({required this.active, required this.onToggle});
-  final bool active;
-  final VoidCallback onToggle;
-
-  static const Color _pink = Color(0xFFFB7185);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: GestureDetector(
-          onTap: onToggle,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: _pink.withValues(alpha: active ? 0.28 : 0.12),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: _pink.withValues(alpha: active ? 0.7 : 0.3)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('👩', style: TextStyle(fontSize: 13)),
-                const SizedBox(width: 6),
-                Text('Kadın sürücü',
-                  style: TextStyle(color: _pink, fontSize: 12, fontWeight: FontWeight.w700),
-                ),
-                if (active) ...[
-                  const SizedBox(width: 6),
-                  const Icon(Icons.check, color: _pink, size: 14),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.url, required this.fallback});
-  final String? url;
-  final String fallback;
-
-  @override
-  Widget build(BuildContext context) {
-    final initials = fallback.isEmpty
-        ? '?'
-        : fallback.trim().split(RegExp(r'\s+')).take(2).map((p) => p[0]).join().toUpperCase();
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        width: 44, height: 44,
-        color: FerxgoColors.brand.withValues(alpha: 0.18),
-        alignment: Alignment.center,
-        child: url != null && url!.isNotEmpty
-            ? Image.network(
-                url!,
-                fit: BoxFit.cover,
-                width: 44, height: 44,
-                errorBuilder: (_, _, _) => _initials(initials),
-              )
-            : _initials(initials),
-      ),
-    );
-  }
-
-  Widget _initials(String s) => Text(s,
-    style: const TextStyle(color: FerxgoColors.brand, fontWeight: FontWeight.w800, fontSize: 14),
-  );
-}

@@ -17,7 +17,10 @@ import '../models/vehicle_class.dart';
 import '../state/booking_draft.dart';
 import '../widgets/driver_status_badge.dart';
 
-/// Vehicle class + fiyat + sürücü seçimi + KVKK + "Talep gönder".
+/// Teklif kaynağı sekmeleri (araç sınıfı yerine): Tümü / Favorilerim / Havuz / Kadın.
+enum _SourceTab { all, favorites, pool, women }
+
+/// Fiyat teklifi + kaynak seçimi (Tümü/Favori/Havuz/Kadın) + KVKK + gönder.
 /// Dropoff seçildikten sonra açılır.
 class BookingConfirmScreen extends ConsumerStatefulWidget {
   const BookingConfirmScreen({super.key});
@@ -32,12 +35,15 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
   String? _error;
   bool _kvkk = false;
 
-  /// Favori sürücüler (canlı durumla). Tek favori varsa otomatik seçilir; çok favori
-  /// varsa yolcu birini seçer ya da "Hepsini seç" ile tümünü işaretler.
+  /// Kaynak sekmesi — varsayılan Tümü (teklif herkese, ilk kabul eden alır).
+  _SourceTab _tab = _SourceTab.all;
+
+  /// Favori + yakındaki sürücüler (canlı durumla). Sekmelere göre listelenir.
   List<NearbyDriver>? _favorites;
-  int? _selectedDriverId;
-  bool _selectAll = false;
-  VehicleClassRef? _selectedClass;
+  List<NearbyDriver>? _nearby;
+  int? _selectedDriverId;   // tek sürücü (1:1)
+  bool _selectAll = false;  // aktif sekmedeki tüm online sürücülere (havuz)
+  VehicleClassRef? _selectedClass; // gizli — tek varsayılan sınıf
 
   /// Yolcunun teklif ettiği ücret (inDrive tarzı). Fiyat hesaplanınca öneriyle
   /// başlatılır, ±%40 band içinde −/+ ile ayarlanır.
@@ -62,22 +68,22 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     final mins = math.max(1, (km * 2.4 + 0.8).round());
     ref.read(bookingDraftProvider.notifier).setRoute(distanceKm: km, durationMinutes: mins);
 
-    // Vehicle class'lar + FAVORİ sürücüler (canlı durumla). Otomatik seçim yok.
+    // Tek varsayılan araç sınıfı (gizli) + favori + yakındaki sürücüler.
     final repo = ref.read(customerRideRepositoryProvider);
     try {
       final classes = await ref.read(vehicleClassesProvider.future);
       final favorites = await repo.favorites();
+      final nearby = await repo.nearbyDrivers(
+        lat: draft.pickup!.position.latitude,
+        lng: draft.pickup!.position.longitude,
+        limit: 10,
+      );
       if (!mounted) return;
       setState(() {
-        _selectedClass = classes.firstWhere(
-          (c) => c.slug == 'easy',
-          orElse: () => classes.first,
-        );
+        // İlk aktif sınıf sessizce kullanılır (tek tip — Martı gibi)
+        _selectedClass = classes.isNotEmpty ? classes.first : null;
         _favorites = favorites;
-        // Tek (online) favori varsa otomatik seç — "direkt teklifi gönder" için.
-        // Çok favori varsa seçim yolcuda kalır.
-        final online = favorites.where((d) => d.isOnline).toList();
-        if (online.length == 1) _selectedDriverId = online.first.id;
+        _nearby = nearby.drivers;
       });
       await _refreshFare();
     } on ApiException catch (e) {
@@ -85,6 +91,36 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     } catch (_) {
       setState(() => _error = 'Bilgiler yüklenemedi.');
     }
+  }
+
+  /// Aktif sekmenin sürücü listesi.
+  List<NearbyDriver> _tabDrivers() {
+    final favs = _favorites ?? const <NearbyDriver>[];
+    final near = _nearby ?? const <NearbyDriver>[];
+    switch (_tab) {
+      case _SourceTab.all:
+        return const [];
+      case _SourceTab.favorites:
+        return favs;
+      case _SourceTab.pool:
+        return near;
+      case _SourceTab.women:
+        // favori + yakın, kadın olanlar, id'ye göre tekilleştir
+        final seen = <int>{};
+        final out = <NearbyDriver>[];
+        for (final d in [...favs, ...near]) {
+          if (d.isFemale && seen.add(d.id)) out.add(d);
+        }
+        return out;
+    }
+  }
+
+  void _switchTab(_SourceTab t) {
+    setState(() {
+      _tab = t;
+      _selectedDriverId = null;
+      _selectAll = false;
+    });
   }
 
   Future<void> _refreshFare() async {
@@ -117,22 +153,31 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     }
   }
 
-  /// [mode]: 'one' → seçili favoriye 1:1 (pazarlık, fallback yok);
-  ///         'all' → tüm online favorilere (favori dalgası, auto);
-  ///         'nearby' → favorileri atla, yakındaki (favori olmayan) havuz.
-  Future<void> _submit(String mode) async {
+  /// [mode]: 'one' → seçili sürücüye 1:1 (pazarlık); 'all' → Tümü (auto, favori-öncelikli
+  ///         + havuz); 'pool' → aktif sekmedeki seçili sürücü listesi ([driverIds]);
+  ///         'nearby' → favori olmayan yakın havuz (tracking escalation'da kullanılır).
+  Future<void> _submit(String mode, {List<int>? driverIds}) async {
     final draft = ref.read(bookingDraftProvider);
     if (!_kvkk) {
       setState(() => _error = 'KVKK onayını işaretlemen gerekiyor.');
       return;
     }
     if (mode == 'one' && _selectedDriverId == null) {
-      setState(() => _error = 'Bir favori sürücü seç ya da "Tüm favorilerime gönder"i kullan.');
+      setState(() => _error = 'Bir sürücü seç ya da "Hepsine gönder"i kullan.');
+      return;
+    }
+    if (mode == 'pool' && (driverIds == null || driverIds.isEmpty)) {
+      setState(() => _error = 'Bu listede şu an müsait sürücü yok.');
       return;
     }
     if (_selectedClass == null || !draft.hasRoute) return;
 
-    final dispatchMode = mode == 'all' ? 'auto' : (mode == 'nearby' ? 'nearby' : null);
+    final dispatchMode = switch (mode) {
+      'all' => 'auto',
+      'nearby' => 'nearby',
+      'pool' => 'pool',
+      _ => null,
+    };
 
     setState(() { _busySubmit = true; _error = null; });
     try {
@@ -149,7 +194,8 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         customerOfferFare: _offerFare ?? draft.estimatedFare,
         dispatchMode: dispatchMode,
         preferredDriverId: mode == 'one' ? _selectedDriverId : null,
-        fallbackDriverIds: const [], // 1:1 saf pazarlık — yayma yok
+        driverIds: mode == 'pool' ? driverIds : null,
+        fallbackDriverIds: const [],
       );
 
       // Reddedilirse tracking bir sonraki kademeyi teklif etsin diye özet sakla
@@ -182,7 +228,6 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
   @override
   Widget build(BuildContext context) {
     final draft = ref.watch(bookingDraftProvider);
-    final classesAsync = ref.watch(vehicleClassesProvider);
 
     return Scaffold(
       backgroundColor: FerxgoColors.ink,
@@ -207,32 +252,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Vehicle class chip'leri
-            const Text('Araç sınıfı',
-              style: TextStyle(color: FerxgoColors.textMid, fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            classesAsync.when(
-              loading: () => const SizedBox(height: 56, child: Center(child: CircularProgressIndicator(color: FerxgoColors.brand))),
-              error: (_, _) => const Text('Araç sınıfları yüklenemedi', style: TextStyle(color: FerxgoColors.danger)),
-              data: (classes) => Wrap(
-                spacing: 8, runSpacing: 8,
-                children: classes.map((c) {
-                  final selected = c.id == _selectedClass?.id;
-                  return _ClassChip(
-                    label: c.name,
-                    selected: selected,
-                    onTap: () async {
-                      setState(() => _selectedClass = c);
-                      await _refreshFare();
-                    },
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Yolcu teklifi (önerilen çapa hint'te + inDrive pazarlık, ±%40)
+            // Yolcu teklifi (öneri çapa + inDrive pazarlık, ±%40)
             if (draft.estimatedFare != null && _offerFare != null)
               PriceStepper(
                 label: 'Yolculuk teklifin',
@@ -249,73 +269,12 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Center(child: CircularProgressIndicator(color: FerxgoColors.brand)),
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
 
-            // Favori sürücün — canlı durum; sadece müsait olan seçilebilir (birebir pazarlık)
-            Row(
-              children: [
-                const Text('Favori sürücün',
-                  style: TextStyle(color: FerxgoColors.textMid, fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                // Birden fazla favori varsa "Hepsini seç" — hepsine birden teklif
-                if ((_favorites?.where((d) => d.isOnline).length ?? 0) > 1)
-                  InkWell(
-                    onTap: () => setState(() {
-                      _selectAll = !_selectAll;
-                      if (_selectAll) _selectedDriverId = null;
-                    }),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(_selectAll ? Icons.check_box : Icons.check_box_outline_blank,
-                            color: _selectAll ? FerxgoColors.brand : FerxgoColors.textLow, size: 18),
-                          const SizedBox(width: 4),
-                          Text('Hepsini seç',
-                            style: TextStyle(
-                              color: _selectAll ? FerxgoColors.brand : FerxgoColors.textMid,
-                              fontSize: 12, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  Text('Birini seç → birebir pazarlık',
-                    style: TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (_favorites == null)
-              const SizedBox(height: 70, child: Center(child: CircularProgressIndicator(color: FerxgoColors.brand)))
-            else if (_favorites!.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: FerxgoColors.inkMuted,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: FerxgoColors.line),
-                ),
-                child: const Text(
-                  'Henüz favori sürücün yok. Teklifini aşağıdan yakındaki müsait sürücülere gönderebilirsin.',
-                  style: TextStyle(color: FerxgoColors.textLow, fontSize: 13, height: 1.35),
-                ),
-              )
-            else
-              Column(
-                children: _favorites!.map((d) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _FavoriteRadio(
-                    driver: d,
-                    selected: _selectAll ? d.isOnline : d.id == _selectedDriverId,
-                    onTap: d.isOnline
-                        ? () => setState(() { _selectedDriverId = d.id; _selectAll = false; })
-                        : null,
-                  ),
-                )).toList(),
-              ),
+            // Kaynak sekmeleri: Tümü (varsayılan) / Favorilerim / Havuz / Kadın
+            _SourceTabs(current: _tab, onChanged: _switchTab),
+            const SizedBox(height: 10),
+            _buildTabContent(),
 
             const SizedBox(height: 12),
 
@@ -355,54 +314,204 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     );
   }
 
-  /// Dağıtım butonu — online favori varsa "Teklifi gönder" (tek seçili → 1:1;
-  /// Hepsini seç → tüm favoriler). Online favori yoksa yakındakiler.
-  List<Widget> _buildDispatchButtons() {
-    final favs = _favorites ?? const <NearbyDriver>[];
-    final onlineFavs = favs.where((d) => d.isOnline).length;
-    final hasFavorites = favs.isNotEmpty;
+  String _emptyTabHint() => switch (_tab) {
+        _SourceTab.favorites => 'Favori sürücün yok ya da şu an müsait değil.',
+        _SourceTab.pool => 'Yakında şu an müsait sürücü yok.',
+        _SourceTab.women => 'Yakında müsait kadın sürücü yok.',
+        _SourceTab.all => '',
+      };
 
+  /// Aktif sekmenin içeriği — Tümü'de açıklama, diğerlerinde seçilebilir liste.
+  Widget _buildTabContent() {
+    if (_tab == _SourceTab.all) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: FerxgoColors.brand.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.40)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.groups, color: FerxgoColors.brand),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text('Teklifin tüm müsait sürücülere aynı anda gider; ilk kabul eden yolculuğu alır.',
+                style: TextStyle(color: FerxgoColors.textMid, fontSize: 13, height: 1.35)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_favorites == null || _nearby == null) {
+      return const SizedBox(height: 70, child: Center(child: CircularProgressIndicator(color: FerxgoColors.brand)));
+    }
+
+    final drivers = _tabDrivers();
+    final onlineCount = drivers.where((d) => d.isOnline).length;
+
+    if (drivers.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: FerxgoColors.inkMuted,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: FerxgoColors.line),
+        ),
+        child: Text(_emptyTabHint(),
+          style: const TextStyle(color: FerxgoColors.textLow, fontSize: 13, height: 1.35)),
+      );
+    }
+
+    return Column(
+      children: [
+        if (onlineCount > 1)
+          Align(
+            alignment: Alignment.centerRight,
+            child: InkWell(
+              onTap: () => setState(() {
+                _selectAll = !_selectAll;
+                if (_selectAll) _selectedDriverId = null;
+              }),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6, left: 6, right: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_selectAll ? Icons.check_box : Icons.check_box_outline_blank,
+                      color: _selectAll ? FerxgoColors.brand : FerxgoColors.textLow, size: 18),
+                    const SizedBox(width: 4),
+                    Text('Hepsini seç',
+                      style: TextStyle(
+                        color: _selectAll ? FerxgoColors.brand : FerxgoColors.textMid,
+                        fontSize: 12, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ...drivers.map((d) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _FavoriteRadio(
+                driver: d,
+                selected: _selectAll ? d.isOnline : d.id == _selectedDriverId,
+                onTap: d.isOnline
+                    ? () => setState(() { _selectedDriverId = d.id; _selectAll = false; })
+                    : null,
+              ),
+            )),
+      ],
+    );
+  }
+
+  /// Gönder butonu — sekme + seçime göre.
+  List<Widget> _buildDispatchButtons() {
     final spinner = _busySubmit
         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.black))
         : null;
 
-    if (onlineFavs > 0) {
-      final canSend = _selectAll || _selectedDriverId != null;
+    // Tümü → herkese (auto)
+    if (_tab == _SourceTab.all) {
       return [
         FilledButton.icon(
-          onPressed: (_busySubmit || !canSend) ? null : () => _submit(_selectAll ? 'all' : 'one'),
-          icon: spinner ?? const Icon(Icons.send),
-          label: Text(!canSend
-              ? 'Önce bir favori seç'
-              : _selectAll ? 'Tüm favorilerime gönder' : 'Teklifi gönder'),
+          onPressed: _busySubmit ? null : () => _submit('all'),
+          icon: spinner ?? const Text('🔥', style: TextStyle(fontSize: 18)),
+          label: const Text('Tümüne gönder'),
         ),
         const SizedBox(height: 6),
-        Center(
-          child: Text(
-            _selectAll
-                ? 'Tüm müsait favorilerine aynı anda gider'
-                : 'Seçtiğin sürücüyle birebir pazarlık',
-            style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
-          ),
-        ),
+        const Center(child: Text('Tüm müsait sürücülere gider, ilk kabul eden alır.',
+          style: TextStyle(color: FerxgoColors.textLow, fontSize: 11))),
       ];
     }
 
-    // Online favori yok → yakındaki müsait (favori olmayan) sürücülere
+    final drivers = _tabDrivers();
+    final onlineIds = drivers.where((d) => d.isOnline).map((d) => d.id).toList();
+
+    if (onlineIds.isEmpty) {
+      return [
+        const FilledButton(onPressed: null, child: Text('Müsait sürücü yok')),
+        const SizedBox(height: 6),
+        Center(child: Text(_emptyTabHint(),
+          style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11))),
+      ];
+    }
+
+    if (_selectAll) {
+      return [
+        FilledButton.icon(
+          onPressed: _busySubmit ? null : () => _submit('pool', driverIds: onlineIds),
+          icon: spinner ?? const Icon(Icons.groups),
+          label: Text('Hepsine gönder (${onlineIds.length})'),
+        ),
+        const SizedBox(height: 6),
+        const Center(child: Text('Seçilenlere aynı anda gider, ilk kabul eden alır.',
+          style: TextStyle(color: FerxgoColors.textLow, fontSize: 11))),
+      ];
+    }
+
     return [
       FilledButton.icon(
-        onPressed: _busySubmit ? null : () => _submit('nearby'),
-        icon: spinner ?? const Text('🔥', style: TextStyle(fontSize: 18)),
-        label: const Text('Yakındaki müsait sürücüye gönder'),
+        onPressed: (_busySubmit || _selectedDriverId == null) ? null : () => _submit('one'),
+        icon: spinner ?? const Icon(Icons.send),
+        label: Text(_selectedDriverId == null ? 'Önce bir sürücü seç' : 'Teklifi gönder'),
       ),
       const SizedBox(height: 6),
-      Center(
-        child: Text(
-          hasFavorites ? 'Favori sürücülerin şu an müsait değil' : 'Henüz favori sürücün yok',
-          style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
-        ),
-      ),
+      const Center(child: Text('Seçtiğin sürücüyle birebir pazarlık',
+        style: TextStyle(color: FerxgoColors.textLow, fontSize: 11))),
     ];
+  }
+}
+
+/// Kaynak sekme çubuğu: Tümü / Favorilerim / Havuz / Kadın.
+class _SourceTabs extends StatelessWidget {
+  const _SourceTabs({required this.current, required this.onChanged});
+  final _SourceTab current;
+  final ValueChanged<_SourceTab> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      (_SourceTab.all, 'Tümü', Icons.groups),
+      (_SourceTab.favorites, 'Favorilerim', Icons.favorite),
+      (_SourceTab.pool, 'Havuz', Icons.hub),
+      (_SourceTab.women, 'Kadın', Icons.face_3),
+    ];
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final (tab, label, icon) = items[i];
+          final sel = tab == current;
+          return InkWell(
+            onTap: () => onChanged(tab),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: sel ? FerxgoColors.brand : FerxgoColors.inkMuted,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: sel ? FerxgoColors.brand : FerxgoColors.line),
+              ),
+              child: Row(
+                children: [
+                  Icon(icon, size: 15, color: sel ? Colors.black : FerxgoColors.textMid),
+                  const SizedBox(width: 6),
+                  Text(label,
+                    style: TextStyle(
+                      color: sel ? Colors.black : FerxgoColors.textHigh,
+                      fontWeight: FontWeight.w700, fontSize: 13)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -493,36 +602,6 @@ class _RouteCard extends StatelessWidget {
       );
 }
 
-class _ClassChip extends StatelessWidget {
-  const _ClassChip({required this.label, required this.selected, required this.onTap});
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? FerxgoColors.brand : FerxgoColors.inkMuted,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? FerxgoColors.brand : FerxgoColors.line),
-        ),
-        child: Text(label,
-          style: TextStyle(
-            color: selected ? Colors.black : FerxgoColors.textHigh,
-            fontWeight: FontWeight.w700, fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// Favori sürücü seçim satırı — canlı durum rozeti; sadece müsait olan seçilebilir.
 class _FavoriteRadio extends StatelessWidget {
   const _FavoriteRadio({required this.driver, required this.selected, required this.onTap});
@@ -580,9 +659,9 @@ class _FavoriteRadio extends StatelessWidget {
                       Row(
                         children: [
                           DriverStatusBadge(driver: driver),
-                          if (driver.vehicleClass != null) ...[
+                          if (driver.vehicleLabel != null && driver.vehicleLabel!.isNotEmpty) ...[
                             const SizedBox(width: 8),
-                            Flexible(child: Text(driver.vehicleClass!,
+                            Flexible(child: Text(driver.vehicleLabel!,
                               style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
                               overflow: TextOverflow.ellipsis,
                             )),

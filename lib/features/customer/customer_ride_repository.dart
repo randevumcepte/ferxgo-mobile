@@ -117,8 +117,10 @@ class CustomerRideRepository {
     double? customerOfferFare,
     int? preferredDriverId,
     List<int> fallbackDriverIds = const [],
-    /// 'auto' → favori-öncelikli otomatik dağıtım ("Hadi Gidelim"); yoksa manuel.
+    /// 'auto' (tümü) | 'nearby' (yakın havuz) | 'pool' (seçili liste) | null (1:1)
     String? dispatchMode,
+    /// dispatch_mode=pool için seçili sürücü id listesi
+    List<int>? driverIds,
   }) async {
     final res = await _api.postJson('/customer/ride-requests', body: {
       'vehicle_class_slug': vehicleClassSlug,
@@ -136,6 +138,7 @@ class CustomerRideRepository {
       'dispatch_mode':   ?dispatchMode,
       'preferred_driver_id': ?preferredDriverId,
       'fallback_driver_ids': fallbackDriverIds,
+      'driver_ids': ?driverIds,
       'kvkk_consent': true,
     });
 
