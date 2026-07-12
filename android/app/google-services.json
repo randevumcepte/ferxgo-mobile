@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "20636918437",
+    "project_id": "ferxgo",
+    "storage_bucket": "ferxgo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:20636918437:android:e5ea61b30dd3fafecd634c",
+        "android_client_info": {
+          "package_name": "com.ferxgo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0ulHyJAN83QK3j00FRH8MtdrZKzhc1AQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

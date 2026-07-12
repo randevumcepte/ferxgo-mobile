@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/device/device_id.dart';
+import '../../core/push/push_service.dart';
 
 /// FerXGo mobil auth katmanı — backend Mobile API ile konuşur.
 class AuthRepository {
@@ -42,6 +44,8 @@ class AuthRepository {
     });
     final session = _sessionFromResponse(res);
     await _ref.read(authControllerProvider.notifier).set(session);
+    // Login sonrası FCM token'ı backend'e kaydet (device kaydı artık mevcut).
+    unawaited(_ref.read(pushServiceProvider).syncToken());
     return session;
   }
 
@@ -59,6 +63,7 @@ class AuthRepository {
     });
     final session = _sessionFromResponse(res);
     await _ref.read(authControllerProvider.notifier).set(session);
+    unawaited(_ref.read(pushServiceProvider).syncToken());
     return session;
   }
 

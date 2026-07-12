@@ -40,6 +40,13 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- FCM: bildirim mesajlarının kullanacağı varsayılan kanal.
+             Sunucu PushService bu id ile gönderir (android.notification.channel_id=ferxgo_default).
+             FCM SDK bu kanalı yoksa otomatik oluşturur. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="ferxgo_default" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
