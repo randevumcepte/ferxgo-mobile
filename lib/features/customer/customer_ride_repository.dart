@@ -187,6 +187,16 @@ class CustomerRideRepository {
     return _api.postJson('/customer/ride-requests/$publicId/confirm');
   }
 
+  /// Faz 6 — görsel doğrulama: yolculuk başladıktan sonra müşteri
+  /// "araç/sürücü doğru mu?" cevabı verir. match=false → güvenlik olayı açılır.
+  /// Dönen map: { ok, verified, message, incident_id?, status }.
+  Future<Map<String, dynamic>> visualVerify(String publicId, bool match, {String? note}) async {
+    return _api.postJson('/customer/ride-requests/$publicId/visual-verify', body: {
+      'match': match,
+      if (note != null && note.isNotEmpty) 'note': note,
+    });
+  }
+
   // ─── Fiyat pazarlığı ──────────────────────────────────────
   /// Müşteri sürücünün karşı teklifine yeni fiyat verir.
   Future<void> counterPrice(String publicId, double amount) async {
