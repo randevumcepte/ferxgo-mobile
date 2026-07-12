@@ -78,7 +78,7 @@ class CustomerRideRepository {
     return (res['favorited'] as bool?) ?? false;
   }
 
-  // ─── Yer arama (Nominatim proxy) ──────────────────────────
+  // ─── Yer arama (GeoService: Yandex/Photon/Nominatim) ──────
   Future<List<Place>> searchPlaces(String q) async {
     final trimmed = q.trim();
     if (trimmed.length < 2) return const [];
@@ -87,6 +87,23 @@ class CustomerRideRepository {
         .whereType<Map>()
         .map((m) => Place.fromJson(Map<String, dynamic>.from(m)))
         .toList(growable: false);
+  }
+
+  /// Koordinatsız (Yandex) öneriyi seçince gerçek konumu çöz.
+  /// [uri] Yandex önerisinin uri'si; yoksa [text] ile metinden çözülür.
+  Future<Place?> resolvePlace({String? uri, String? text}) async {
+    final res = await _api.getJson('/customer/places/resolve', query: {
+      if (uri != null && uri.isNotEmpty) 'uri': uri,
+      if (text != null && text.isNotEmpty) 'text': text,
+    });
+    final lat = (res['lat'] as num?)?.toDouble();
+    final lon = (res['lon'] as num?)?.toDouble();
+    if (lat == null || lon == null) return null;
+    return Place(
+      position: LatLng(lat, lon),
+      displayName: res['display_name'] as String? ?? (text ?? ''),
+      hasCoords: true,
+    );
   }
 
   // ─── Fiyat hesabı ─────────────────────────────────────────

@@ -42,6 +42,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   Timer? _searchDebounce;
   List<Place> _searchResults = const [];
   bool _searchBusy = false;
+  bool _resolvingDropoff = false; // Yandex önerisinin koordinatı çözülürken
   String? _searchError;
 
   /// Kutuda ≥2 karakter varsa liste alanında sürücü yerine sonuçlar gösterilir.
@@ -122,15 +123,38 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
     }
   }
 
-  void _pickDropoff(Place p) {
+  Future<void> _pickDropoff(Place p) async {
+    if (_resolvingDropoff) return;
+    FocusScope.of(context).unfocus();
+
+    Place dropoff = p;
+    // Yandex önerisi koordinatsız gelir → gerçek konumu çöz.
+    if (!p.hasCoords) {
+      setState(() { _resolvingDropoff = true; _searchError = null; });
+      try {
+        final resolved = await ref.read(customerRideRepositoryProvider)
+            .resolvePlace(uri: p.uri, text: p.displayName);
+        if (!mounted) return;
+        if (resolved == null) {
+          setState(() { _resolvingDropoff = false; _searchError = 'Bu konumun koordinatı alınamadı, başka bir sonuç dene.'; });
+          return;
+        }
+        // Güzel görünen ismi koru, koordinatı al
+        dropoff = Place(position: resolved.position, displayName: p.displayName, hasCoords: true);
+      } catch (_) {
+        if (mounted) setState(() { _resolvingDropoff = false; _searchError = 'Konum alınamadı, ağını kontrol et.'; });
+        return;
+      }
+      if (mounted) setState(() => _resolvingDropoff = false);
+    }
+
     // Pickup'ı garantiye al (adres varsa onunla)
     ref.read(bookingDraftProvider.notifier).setPickup(
       Place(position: _center, displayName: _pickupAddress ?? 'Mevcut konumum'),
     );
-    ref.read(bookingDraftProvider.notifier).setDropoff(p);
-    FocusScope.of(context).unfocus();
+    ref.read(bookingDraftProvider.notifier).setDropoff(dropoff);
     _searchCtrl.clear();
-    context.push(AppRoutes.customerBookConfirm);
+    if (mounted) context.push(AppRoutes.customerBookConfirm);
   }
 
   Future<void> _loadDrivers() async {
@@ -425,6 +449,18 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   }
 
   Widget _buildSearchResults() {
+    if (_resolvingDropoff) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: FerxgoColors.brand),
+            SizedBox(height: 12),
+            Text('Konum alınıyor…', style: TextStyle(color: FerxgoColors.textMid)),
+          ],
+        ),
+      );
+    }
     if (_searchError != null) {
       return Center(child: Padding(
         padding: const EdgeInsets.all(20),
