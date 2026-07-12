@@ -86,11 +86,16 @@ class DispatchSnapshot {
     required this.durationMinutes,
     this.estimatedFare,
     this.offerFare,
-    this.wasManual = false,
+    this.stage = 'one',
+    this.favoriteCount = 0,
   });
 
-  /// 1:1 (seçili favoriye) mi gönderildi — reddedilince "tüm favorilere" teklif için.
-  final bool wasManual;
+  /// Son dağıtım aşaması: 'one' (tek favoriye 1:1) | 'all' (tüm favoriler) | 'nearby'.
+  /// Reddedilince tracking bir sonraki kademeyi teklif eder.
+  final String stage;
+
+  /// Yolcunun toplam favori sayısı — 1:1 reddinde "tüm favorilere" adımı gösterilsin mi.
+  final int favoriteCount;
 
   final String vehicleClassSlug;
   final String pickupAddress;

@@ -32,9 +32,11 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
   String? _error;
   bool _kvkk = false;
 
-  /// Favori sürücüler (canlı durumla). Otomatik seçim YOK — yolcu bilerek seçer.
+  /// Favori sürücüler (canlı durumla). Tek favori varsa otomatik seçilir; çok favori
+  /// varsa yolcu birini seçer ya da "Hepsini seç" ile tümünü işaretler.
   List<NearbyDriver>? _favorites;
   int? _selectedDriverId;
+  bool _selectAll = false;
   VehicleClassRef? _selectedClass;
 
   /// Yolcunun teklif ettiği ücret (inDrive tarzı). Fiyat hesaplanınca öneriyle
@@ -72,7 +74,10 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
           orElse: () => classes.first,
         );
         _favorites = favorites;
-        // _selectedDriverId BİLEREK null — yolcu kendi seçer
+        // Tek (online) favori varsa otomatik seç — "direkt teklifi gönder" için.
+        // Çok favori varsa seçim yolcuda kalır.
+        final online = favorites.where((d) => d.isOnline).toList();
+        if (online.length == 1) _selectedDriverId = online.first.id;
       });
       await _refreshFare();
     } on ApiException catch (e) {
@@ -112,19 +117,22 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     }
   }
 
-  /// [auto] true → tüm favorilere / yakındakilere (favori-öncelikli otomatik dağıtım).
-  /// false → seçilen favoriye BİRE BİR (pazarlık için tek sürücü, fallback yok).
-  Future<void> _submit({required bool auto}) async {
+  /// [mode]: 'one' → seçili favoriye 1:1 (pazarlık, fallback yok);
+  ///         'all' → tüm online favorilere (favori dalgası, auto);
+  ///         'nearby' → favorileri atla, yakındaki (favori olmayan) havuz.
+  Future<void> _submit(String mode) async {
     final draft = ref.read(bookingDraftProvider);
     if (!_kvkk) {
       setState(() => _error = 'KVKK onayını işaretlemen gerekiyor.');
       return;
     }
-    if (!auto && _selectedDriverId == null) {
+    if (mode == 'one' && _selectedDriverId == null) {
       setState(() => _error = 'Bir favori sürücü seç ya da "Tüm favorilerime gönder"i kullan.');
       return;
     }
     if (_selectedClass == null || !draft.hasRoute) return;
+
+    final dispatchMode = mode == 'all' ? 'auto' : (mode == 'nearby' ? 'nearby' : null);
 
     setState(() { _busySubmit = true; _error = null; });
     try {
@@ -139,12 +147,12 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         estimatedFare: draft.estimatedFare,
         suggestedFare: draft.estimatedFare,
         customerOfferFare: _offerFare ?? draft.estimatedFare,
-        dispatchMode: auto ? 'auto' : null,
-        preferredDriverId: auto ? null : _selectedDriverId,
+        dispatchMode: dispatchMode,
+        preferredDriverId: mode == 'one' ? _selectedDriverId : null,
         fallbackDriverIds: const [], // 1:1 saf pazarlık — yayma yok
       );
 
-      // 1:1 reddedilirse tracking'de "Tüm favorilere gönder" için özet sakla
+      // Reddedilirse tracking bir sonraki kademeyi teklif etsin diye özet sakla
       ref.read(lastDispatchProvider.notifier).state = DispatchSnapshot(
         vehicleClassSlug: _selectedClass!.slug,
         pickupAddress: draft.pickup!.displayName,
@@ -155,7 +163,8 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         durationMinutes: draft.durationMinutes!,
         estimatedFare: draft.estimatedFare,
         offerFare: _offerFare ?? draft.estimatedFare,
-        wasManual: !auto,
+        stage: mode,
+        favoriteCount: _favorites?.length ?? 0,
       );
 
       if (!mounted) return;
@@ -249,8 +258,33 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                   style: TextStyle(color: FerxgoColors.textMid, fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
-                Text('Birini seç → birebir pazarlık',
-                  style: TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
+                // Birden fazla favori varsa "Hepsini seç" — hepsine birden teklif
+                if ((_favorites?.where((d) => d.isOnline).length ?? 0) > 1)
+                  InkWell(
+                    onTap: () => setState(() {
+                      _selectAll = !_selectAll;
+                      if (_selectAll) _selectedDriverId = null;
+                    }),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_selectAll ? Icons.check_box : Icons.check_box_outline_blank,
+                            color: _selectAll ? FerxgoColors.brand : FerxgoColors.textLow, size: 18),
+                          const SizedBox(width: 4),
+                          Text('Hepsini seç',
+                            style: TextStyle(
+                              color: _selectAll ? FerxgoColors.brand : FerxgoColors.textMid,
+                              fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Text('Birini seç → birebir pazarlık',
+                    style: TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
               ],
             ),
             const SizedBox(height: 8),
@@ -275,8 +309,10 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _FavoriteRadio(
                     driver: d,
-                    selected: d.id == _selectedDriverId,
-                    onTap: d.isOnline ? () => setState(() => _selectedDriverId = d.id) : null,
+                    selected: _selectAll ? d.isOnline : d.id == _selectedDriverId,
+                    onTap: d.isOnline
+                        ? () => setState(() { _selectedDriverId = d.id; _selectAll = false; })
+                        : null,
                   ),
                 )).toList(),
               ),
@@ -319,43 +355,43 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     );
   }
 
-  /// Dağıtım butonları — online favori varsa 1:1 + tüm favoriler; yoksa yakındakiler.
+  /// Dağıtım butonu — online favori varsa "Teklifi gönder" (tek seçili → 1:1;
+  /// Hepsini seç → tüm favoriler). Online favori yoksa yakındakiler.
   List<Widget> _buildDispatchButtons() {
     final favs = _favorites ?? const <NearbyDriver>[];
-    final hasOnlineFav = favs.any((d) => d.isOnline);
+    final onlineFavs = favs.where((d) => d.isOnline).length;
     final hasFavorites = favs.isNotEmpty;
 
     final spinner = _busySubmit
         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.black))
         : null;
 
-    if (hasOnlineFav) {
+    if (onlineFavs > 0) {
+      final canSend = _selectAll || _selectedDriverId != null;
       return [
-        // Birebir: seçili favoriye teklif (pazarlık)
         FilledButton.icon(
-          onPressed: (_busySubmit || _selectedDriverId == null) ? null : () => _submit(auto: false),
+          onPressed: (_busySubmit || !canSend) ? null : () => _submit(_selectAll ? 'all' : 'one'),
           icon: spinner ?? const Icon(Icons.send),
-          label: Text(_selectedDriverId == null ? 'Önce bir favori seç' : 'Teklifi gönder'),
+          label: Text(!canSend
+              ? 'Önce bir favori seç'
+              : _selectAll ? 'Tüm favorilerime gönder' : 'Teklifi gönder'),
         ),
         const SizedBox(height: 6),
-        const Center(
-          child: Text('Seçtiğin sürücüyle birebir pazarlık',
-            style: TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
-        ),
-        const SizedBox(height: 10),
-        // Hepsi: tüm online favorilere yay
-        OutlinedButton.icon(
-          onPressed: _busySubmit ? null : () => _submit(auto: true),
-          icon: const Icon(Icons.groups, size: 18),
-          label: const Text('Tüm favorilerime gönder'),
+        Center(
+          child: Text(
+            _selectAll
+                ? 'Tüm müsait favorilerine aynı anda gider'
+                : 'Seçtiğin sürücüyle birebir pazarlık',
+            style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
+          ),
         ),
       ];
     }
 
-    // Online favori yok → yakındaki müsait sürücülere
+    // Online favori yok → yakındaki müsait (favori olmayan) sürücülere
     return [
       FilledButton.icon(
-        onPressed: _busySubmit ? null : () => _submit(auto: true),
+        onPressed: _busySubmit ? null : () => _submit('nearby'),
         icon: spinner ?? const Text('🔥', style: TextStyle(fontSize: 18)),
         label: const Text('Yakındaki müsait sürücüye gönder'),
       ),
