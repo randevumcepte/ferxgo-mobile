@@ -15,6 +15,7 @@ import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
 import '../models/vehicle_class.dart';
 import '../state/booking_draft.dart';
+import '../widgets/driver_status_badge.dart';
 
 /// Vehicle class + fiyat + sürücü seçimi + KVKK + "Talep gönder".
 /// Dropoff seçildikten sonra açılır.
@@ -31,7 +32,8 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
   String? _error;
   bool _kvkk = false;
 
-  NearbyResult? _nearby;
+  /// Favori sürücüler (canlı durumla). Otomatik seçim YOK — yolcu bilerek seçer.
+  List<NearbyDriver>? _favorites;
   int? _selectedDriverId;
   VehicleClassRef? _selectedClass;
 
@@ -58,23 +60,19 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     final mins = math.max(1, (km * 2.4 + 0.8).round());
     ref.read(bookingDraftProvider.notifier).setRoute(distanceKm: km, durationMinutes: mins);
 
-    // Vehicle class'lar + yakındaki sürücüler paralel
+    // Vehicle class'lar + FAVORİ sürücüler (canlı durumla). Otomatik seçim yok.
     final repo = ref.read(customerRideRepositoryProvider);
     try {
       final classes = await ref.read(vehicleClassesProvider.future);
-      final nearby = await repo.nearbyDrivers(
-        lat: draft.pickup!.position.latitude,
-        lng: draft.pickup!.position.longitude,
-        limit: 6,
-      );
+      final favorites = await repo.favorites();
       if (!mounted) return;
       setState(() {
         _selectedClass = classes.firstWhere(
           (c) => c.slug == 'easy',
           orElse: () => classes.first,
         );
-        _nearby = nearby;
-        _selectedDriverId = nearby.drivers.isNotEmpty ? nearby.drivers.first.id : null;
+        _favorites = favorites;
+        // _selectedDriverId BİLEREK null — yolcu kendi seçer
       });
       await _refreshFare();
     } on ApiException catch (e) {
@@ -114,8 +112,8 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     }
   }
 
-  /// [auto] true → "Hadi Gidelim": sürücü seçmeden favori-öncelikli otomatik dağıtım.
-  /// false → manuel: seçilen sürücüye (preferred) + fallback'ler.
+  /// [auto] true → tüm favorilere / yakındakilere (favori-öncelikli otomatik dağıtım).
+  /// false → seçilen favoriye BİRE BİR (pazarlık için tek sürücü, fallback yok).
   Future<void> _submit({required bool auto}) async {
     final draft = ref.read(bookingDraftProvider);
     if (!_kvkk) {
@@ -123,21 +121,13 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
       return;
     }
     if (!auto && _selectedDriverId == null) {
-      setState(() => _error = 'Bir sürücü seç ya da "Hadi Gidelim" ile otomatik gönder.');
+      setState(() => _error = 'Bir favori sürücü seç ya da "Tüm favorilerime gönder"i kullan.');
       return;
     }
     if (_selectedClass == null || !draft.hasRoute) return;
 
     setState(() { _busySubmit = true; _error = null; });
     try {
-      final fallback = auto
-          ? const <int>[]
-          : (_nearby?.drivers ?? const <NearbyDriver>[])
-              .map((d) => d.id)
-              .where((id) => id != _selectedDriverId)
-              .take(5)
-              .toList();
-
       final res = await ref.read(customerRideRepositoryProvider).createRequest(
         vehicleClassSlug: _selectedClass!.slug,
         pickupAddress: draft.pickup!.displayName,
@@ -151,7 +141,21 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         customerOfferFare: _offerFare ?? draft.estimatedFare,
         dispatchMode: auto ? 'auto' : null,
         preferredDriverId: auto ? null : _selectedDriverId,
-        fallbackDriverIds: fallback,
+        fallbackDriverIds: const [], // 1:1 saf pazarlık — yayma yok
+      );
+
+      // 1:1 reddedilirse tracking'de "Tüm favorilere gönder" için özet sakla
+      ref.read(lastDispatchProvider.notifier).state = DispatchSnapshot(
+        vehicleClassSlug: _selectedClass!.slug,
+        pickupAddress: draft.pickup!.displayName,
+        pickupPosition: draft.pickup!.position,
+        dropoffAddress: draft.dropoff!.displayName,
+        dropoffPosition: draft.dropoff!.position,
+        distanceKm: draft.distanceKm!,
+        durationMinutes: draft.durationMinutes!,
+        estimatedFare: draft.estimatedFare,
+        offerFare: _offerFare ?? draft.estimatedFare,
+        wasManual: !auto,
       );
 
       if (!mounted) return;
@@ -238,26 +242,41 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
               ),
             const SizedBox(height: 12),
 
-            // Sürücü seçimi (opsiyonel — "Hadi Gidelim" için gerekmez)
-            const Text('Sürücü seç (opsiyonel)',
-              style: TextStyle(color: FerxgoColors.textMid, fontSize: 13, fontWeight: FontWeight.w600),
+            // Favori sürücün — canlı durum; sadece müsait olan seçilebilir (birebir pazarlık)
+            Row(
+              children: [
+                const Text('Favori sürücün',
+                  style: TextStyle(color: FerxgoColors.textMid, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                Text('Birini seç → birebir pazarlık',
+                  style: TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
+              ],
             ),
             const SizedBox(height: 8),
-            if (_nearby == null)
-              const SizedBox(height: 80, child: Center(child: CircularProgressIndicator(color: FerxgoColors.brand)))
-            else if (_nearby!.drivers.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text('Çevrede şu an müsait sürücü yok.', style: TextStyle(color: FerxgoColors.textLow)),
+            if (_favorites == null)
+              const SizedBox(height: 70, child: Center(child: CircularProgressIndicator(color: FerxgoColors.brand)))
+            else if (_favorites!.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: FerxgoColors.inkMuted,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: FerxgoColors.line),
+                ),
+                child: const Text(
+                  'Henüz favori sürücün yok. Teklifini aşağıdan yakındaki müsait sürücülere gönderebilirsin.',
+                  style: TextStyle(color: FerxgoColors.textLow, fontSize: 13, height: 1.35),
+                ),
               )
             else
               Column(
-                children: _nearby!.drivers.map((d) => Padding(
+                children: _favorites!.map((d) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: _DriverRadio(
+                  child: _FavoriteRadio(
                     driver: d,
                     selected: d.id == _selectedDriverId,
-                    onTap: () => setState(() => _selectedDriverId = d.id),
+                    onTap: d.isOnline ? () => setState(() => _selectedDriverId = d.id) : null,
                   ),
                 )).toList(),
               ),
@@ -293,34 +312,61 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
             if (_error != null) ErrorBanner(message: _error!, onClose: () => setState(() => _error = null)),
             const SizedBox(height: 12),
 
-            // Birincil: Hadi Gidelim (favori-öncelikli otomatik dağıtım)
-            FilledButton.icon(
-              onPressed: _busySubmit ? null : () => _submit(auto: true),
-              icon: _busySubmit
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.black))
-                  : const Text('🔥', style: TextStyle(fontSize: 18)),
-              label: const Text('Hadi Gidelim'),
-            ),
-            const SizedBox(height: 6),
-            Center(
-              child: Text(
-                'Favori sürücülerin öncelikli; yoksa en yakın müsait sürücü',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // İkincil: seçili sürücüye gönder (manuel)
-            OutlinedButton.icon(
-              onPressed: (_busySubmit || _selectedDriverId == null) ? null : () => _submit(auto: false),
-              icon: const Icon(Icons.person_pin, size: 18),
-              label: const Text('Sadece seçili sürücüye gönder'),
-            ),
+            ..._buildDispatchButtons(),
           ],
         ),
       ),
     );
+  }
+
+  /// Dağıtım butonları — online favori varsa 1:1 + tüm favoriler; yoksa yakındakiler.
+  List<Widget> _buildDispatchButtons() {
+    final favs = _favorites ?? const <NearbyDriver>[];
+    final hasOnlineFav = favs.any((d) => d.isOnline);
+    final hasFavorites = favs.isNotEmpty;
+
+    final spinner = _busySubmit
+        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.black))
+        : null;
+
+    if (hasOnlineFav) {
+      return [
+        // Birebir: seçili favoriye teklif (pazarlık)
+        FilledButton.icon(
+          onPressed: (_busySubmit || _selectedDriverId == null) ? null : () => _submit(auto: false),
+          icon: spinner ?? const Icon(Icons.send),
+          label: Text(_selectedDriverId == null ? 'Önce bir favori seç' : 'Teklifi gönder'),
+        ),
+        const SizedBox(height: 6),
+        const Center(
+          child: Text('Seçtiğin sürücüyle birebir pazarlık',
+            style: TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
+        ),
+        const SizedBox(height: 10),
+        // Hepsi: tüm online favorilere yay
+        OutlinedButton.icon(
+          onPressed: _busySubmit ? null : () => _submit(auto: true),
+          icon: const Icon(Icons.groups, size: 18),
+          label: const Text('Tüm favorilerime gönder'),
+        ),
+      ];
+    }
+
+    // Online favori yok → yakındaki müsait sürücülere
+    return [
+      FilledButton.icon(
+        onPressed: _busySubmit ? null : () => _submit(auto: true),
+        icon: spinner ?? const Text('🔥', style: TextStyle(fontSize: 18)),
+        label: const Text('Yakındaki müsait sürücüye gönder'),
+      ),
+      const SizedBox(height: 6),
+      Center(
+        child: Text(
+          hasFavorites ? 'Favori sürücülerin şu an müsait değil' : 'Henüz favori sürücün yok',
+          style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
+        ),
+      ),
+    ];
   }
 }
 
@@ -441,80 +487,77 @@ class _ClassChip extends StatelessWidget {
   }
 }
 
-class _DriverRadio extends StatelessWidget {
-  const _DriverRadio({required this.driver, required this.selected, required this.onTap});
+/// Favori sürücü seçim satırı — canlı durum rozeti; sadece müsait olan seçilebilir.
+class _FavoriteRadio extends StatelessWidget {
+  const _FavoriteRadio({required this.driver, required this.selected, required this.onTap});
   final NearbyDriver driver;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap; // null → müsait değil, seçilemez
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected ? FerxgoColors.brand.withValues(alpha: 0.12) : FerxgoColors.inkSoft,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
+    final enabled = onTap != null;
+    return Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: Material(
+        color: selected ? FerxgoColors.brand.withValues(alpha: 0.12) : FerxgoColors.inkSoft,
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? FerxgoColors.brand : FerxgoColors.line,
-              width: selected ? 1.4 : 1,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected ? FerxgoColors.brand : FerxgoColors.line,
+                width: selected ? 1.4 : 1,
+              ),
             ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                color: selected ? FerxgoColors.brand : FerxgoColors.textLow,
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(child: Text(driver.name,
-                          style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w700),
-                          overflow: TextOverflow.ellipsis,
-                        )),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.star, color: FerxgoColors.brand, size: 13),
-                        const SizedBox(width: 2),
-                        Text(driver.rating.toStringAsFixed(1),
-                          style: const TextStyle(color: FerxgoColors.textMid, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [
-                        if (driver.vehicleClass != null) driver.vehicleClass,
-                        if (driver.vehicleLabel != null && driver.vehicleLabel!.isNotEmpty) driver.vehicleLabel,
-                      ].whereType<String>().join(' · '),
-                      style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+            child: Row(
+              children: [
+                Icon(
+                  selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                  color: selected ? FerxgoColors.brand : FerxgoColors.textLow,
+                  size: 20,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('${driver.etaMinutes} dk',
-                    style: const TextStyle(color: FerxgoColors.brand, fontSize: 14, fontWeight: FontWeight.w800),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(child: Text(driver.name,
+                            style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w700),
+                            overflow: TextOverflow.ellipsis,
+                          )),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.star, color: FerxgoColors.brand, size: 13),
+                          const SizedBox(width: 2),
+                          Text(driver.rating.toStringAsFixed(1),
+                            style: const TextStyle(color: FerxgoColors.textMid, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          DriverStatusBadge(driver: driver),
+                          if (driver.vehicleClass != null) ...[
+                            const SizedBox(width: 8),
+                            Flexible(child: Text(driver.vehicleClass!,
+                              style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                            )),
+                          ],
+                        ],
+                      ),
+                    ],
                   ),
-                  Text('${driver.distanceKm.toStringAsFixed(1)} km',
-                    style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

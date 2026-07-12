@@ -26,6 +26,8 @@ class NearbyDriver {
     this.favoriteCount = 0,
     this.isFemale = false,
     this.womenOnly = false,
+    this.availabilityStatus,
+    this.isOnline = false,
   });
 
   final int id;
@@ -50,6 +52,20 @@ class NearbyDriver {
   /// Kadın sürücü güvenliği
   final bool isFemale;
   final bool womenOnly;
+
+  /// Canlı müsaitlik (favoriler ekranında rozet): online | offline | busy
+  final String? availabilityStatus;
+  final bool isOnline;
+
+  bool get isBusy => availabilityStatus == 'busy';
+  bool get isOffline => !isOnline && !isBusy;
+
+  /// Rozet metni (favori durum göstergesi)
+  String get statusLabel => isOnline
+      ? 'Müsait'
+      : isBusy
+          ? 'Yolculukta'
+          : 'Çevrimdışı';
 
   /// Sürücünün GPS konumu — harita marker'ı için. Nearby endpoint şu an
   /// sürücünün koordinatlarını dönmüyor (sadece distance/eta) — bu yüzden
@@ -79,6 +95,8 @@ class NearbyDriver {
       favoriteCount: asIntOr(json['favorite_count'], 0),
       isFemale: (json['is_female'] as bool?) ?? false,
       womenOnly: (json['women_only'] as bool?) ?? false,
+      availabilityStatus: json['availability_status'] as String?,
+      isOnline: (json['is_online'] as bool?) ?? (json['availability_status'] == 'online'),
     );
   }
 
@@ -103,6 +121,8 @@ class NearbyDriver {
       favoriteCount: favoriteCount ?? this.favoriteCount,
       isFemale: isFemale,
       womenOnly: womenOnly,
+      availabilityStatus: availabilityStatus,
+      isOnline: isOnline,
     );
   }
 

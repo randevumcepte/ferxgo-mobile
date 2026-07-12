@@ -196,6 +196,11 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
         backgroundColor: FerxgoColors.ink,
         actions: [
           IconButton(
+            tooltip: 'Favori sürücülerim',
+            onPressed: () => context.push(AppRoutes.customerFavorites),
+            icon: const Icon(Icons.favorite_border),
+          ),
+          IconButton(
             tooltip: 'Geçmiş yolculuklar',
             onPressed: () => context.push(AppRoutes.customerHistory),
             icon: const Icon(Icons.history),

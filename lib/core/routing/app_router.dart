@@ -9,6 +9,7 @@ import '../../features/auth/screens/driver_login_screen.dart';
 import '../../features/customer/screens/booking_confirm_screen.dart';
 import '../../features/customer/screens/customer_history_screen.dart';
 import '../../features/customer/screens/customer_map_screen.dart';
+import '../../features/customer/screens/favorites_screen.dart';
 import '../../features/customer/screens/ride_tracking_screen.dart';
 import '../../features/driver/screens/driver_home_screen.dart';
 import '../../features/mode_select/mode_select_screen.dart';
@@ -26,6 +27,7 @@ class AppRoutes {
   static const driverLogin    = '/driver/login';
   static const customerHome           = '/customer/home';     // ana ekran (harita)
   static const customerHistory        = '/customer/history';
+  static const customerFavorites      = '/customer/favorites';
   static const customerBookDropoff    = '/customer/book/dropoff';
   static const customerBookConfirm    = '/customer/book/confirm';
   /// Tracking URL: `$customerRideBase/$publicId`
@@ -115,6 +117,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.driverLogin,         builder: (_, _) => const DriverLoginScreen()),
       GoRoute(path: AppRoutes.customerHome,        builder: (_, _) => const CustomerMapScreen()),
       GoRoute(path: AppRoutes.customerHistory,     builder: (_, _) => const CustomerHistoryScreen()),
+      GoRoute(path: AppRoutes.customerFavorites,   builder: (_, _) => const FavoritesScreen()),
       GoRoute(path: AppRoutes.customerBookConfirm, builder: (_, _) => const BookingConfirmScreen()),
       GoRoute(
         path: '${AppRoutes.customerRideBase}/:publicId',

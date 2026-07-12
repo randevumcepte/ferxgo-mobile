@@ -72,6 +72,39 @@ final bookingDraftProvider = NotifierProvider<BookingDraftController, BookingDra
   BookingDraftController.new,
 );
 
+/// Son gönderilen talebin özeti — 1:1 reddedilince/süre dolunca tracking'de
+/// "Tüm favorilerime gönder" için rota/teklif bilgisini taşır.
+@immutable
+class DispatchSnapshot {
+  const DispatchSnapshot({
+    required this.vehicleClassSlug,
+    required this.pickupAddress,
+    required this.pickupPosition,
+    required this.dropoffAddress,
+    required this.dropoffPosition,
+    required this.distanceKm,
+    required this.durationMinutes,
+    this.estimatedFare,
+    this.offerFare,
+    this.wasManual = false,
+  });
+
+  /// 1:1 (seçili favoriye) mi gönderildi — reddedilince "tüm favorilere" teklif için.
+  final bool wasManual;
+
+  final String vehicleClassSlug;
+  final String pickupAddress;
+  final LatLng pickupPosition;
+  final String dropoffAddress;
+  final LatLng dropoffPosition;
+  final double distanceKm;
+  final int durationMinutes;
+  final double? estimatedFare;
+  final double? offerFare;
+}
+
+final lastDispatchProvider = StateProvider<DispatchSnapshot?>((ref) => null);
+
 /// Bootstrap'tan gelen vehicle class'lar — cache'lensin.
 final vehicleClassesProvider = FutureProvider<List<VehicleClassRef>>((ref) async {
   return ref.watch(customerRideRepositoryProvider).vehicleClasses();

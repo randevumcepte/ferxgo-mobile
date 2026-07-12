@@ -18,6 +18,7 @@ import '../../../shared/widgets/price_stepper.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
 import '../models/ride_status.dart';
+import '../state/booking_draft.dart';
 
 /// Talep sonrası ana tracking ekranı.
 ///  - 2 sn polling /customer/ride-requests/{publicId}
@@ -290,6 +291,37 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     }
   }
 
+  // ─── 1:1 reddedilince: aynı teklifi TÜM favorilere gönder ─
+  Future<void> _resendToAllFavorites() async {
+    final snap = ref.read(lastDispatchProvider);
+    if (snap == null) { context.go(AppRoutes.customerHome); return; }
+    setState(() => _busyAction = true);
+    try {
+      final res = await ref.read(customerRideRepositoryProvider).createRequest(
+        vehicleClassSlug: snap.vehicleClassSlug,
+        pickupAddress: snap.pickupAddress,
+        pickupPosition: snap.pickupPosition,
+        dropoffAddress: snap.dropoffAddress,
+        dropoffPosition: snap.dropoffPosition,
+        distanceKm: snap.distanceKm,
+        durationMinutes: snap.durationMinutes,
+        estimatedFare: snap.estimatedFare,
+        suggestedFare: snap.estimatedFare,
+        customerOfferFare: snap.offerFare ?? snap.estimatedFare,
+        dispatchMode: 'auto',
+        fallbackDriverIds: const [],
+      );
+      // Yeni talep auto — tekrar reddedilirse resend teklif etme
+      ref.read(lastDispatchProvider.notifier).state = null;
+      if (!mounted) return;
+      context.go('${AppRoutes.customerRideBase}/${res.publicId}');
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busyAction = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = _status;
@@ -314,13 +346,22 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
 
   Widget _build(RideStatus s) {
     if (s.isExpired) {
+      // 1:1 (seçili favoriye) gönderilip reddedildiyse → tüm favorilere teklif et
+      final snap = ref.read(lastDispatchProvider);
+      final canResend = snap != null && snap.wasManual;
       return _Terminal(
         icon: Icons.hourglass_disabled,
-        title: 'Sürücü bulunamadı',
-        message: 'Çevredeki sürücüler talebini cevaplamadı.\nTekrar deneyebilirsin.',
-        ctaText: 'Ana ekrana dön',
-        onTap: () => context.go(AppRoutes.customerHome),
+        title: canResend ? 'Sürücü kabul etmedi' : 'Sürücü bulunamadı',
+        message: canResend
+            ? 'Seçtiğin sürücü teklifini kabul etmedi.\nAynı teklifi tüm favori sürücülerine gönderebilirsin.'
+            : 'Çevredeki sürücüler talebini cevaplamadı.\nTekrar deneyebilirsin.',
+        ctaText: canResend ? 'Tüm favorilerime gönder' : 'Ana ekrana dön',
+        onTap: canResend
+            ? (_busyAction ? null : _resendToAllFavorites)
+            : () => context.go(AppRoutes.customerHome),
         color: FerxgoColors.warning,
+        secondaryText: canResend ? 'Ana ekrana dön' : null,
+        onSecondary: canResend ? () => context.go(AppRoutes.customerHome) : null,
       );
     }
     if (s.isCancelled || s.isExhausted) {
@@ -1101,13 +1142,17 @@ class _Terminal extends StatelessWidget {
     required this.ctaText,
     required this.onTap,
     required this.color,
+    this.secondaryText,
+    this.onSecondary,
   });
   final IconData icon;
   final String title;
   final String message;
   final String ctaText;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Color color;
+  final String? secondaryText;
+  final VoidCallback? onSecondary;
 
   @override
   Widget build(BuildContext context) {
@@ -1127,6 +1172,10 @@ class _Terminal extends StatelessWidget {
             style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 52)),
             child: Text(ctaText),
           ),
+          if (secondaryText != null) ...[
+            const SizedBox(height: 8),
+            TextButton(onPressed: onSecondary, child: Text(secondaryText!)),
+          ],
         ],
       ),
     );
