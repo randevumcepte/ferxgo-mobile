@@ -17,10 +17,10 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
   ]);
 
-  // Firebase + FCM push. Native config dosyaları:
-  //   Android: android/app/google-services.json
-  //   iOS:     ios/Runner/GoogleService-Info.plist
-  // eksik/hatalıysa init loglanır ama uygulama yine açılır (push devre dışı kalır).
+  // Push servisi ile aynı Riverpod container'ını paylaşmak için elle oluşturuyoruz.
+  final container = ProviderContainer();
+
+  // Firebase init (hızlı) — eksik/hatalıysa loglanır, uygulama yine açılır.
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -28,18 +28,20 @@ Future<void> main() async {
     if (kDebugMode) debugPrint('[push] Firebase init başarısız: $e');
   }
 
-  // Push servisi ile aynı Riverpod container'ını paylaşmak için elle oluşturuyoruz.
-  final container = ProviderContainer();
-  try {
-    await container.read(pushServiceProvider).start();
-  } catch (e) {
-    if (kDebugMode) debugPrint('[push] başlatma atlandı: $e');
-  }
-
+  // UI'yi HEMEN aç. Push başlatma (izin isteği + token kaydı) arka planda çalışır;
+  // ağ/izin bekletirse uygulama açılışını KİLİTLEMESİN (siyah ekran olmasın).
   runApp(UncontrolledProviderScope(
     container: container,
     child: const FerxgoApp(),
   ));
+
+  Future.microtask(() async {
+    try {
+      await container.read(pushServiceProvider).start();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[push] başlatma atlandı: $e');
+    }
+  });
 }
 
 class FerxgoApp extends ConsumerWidget {
