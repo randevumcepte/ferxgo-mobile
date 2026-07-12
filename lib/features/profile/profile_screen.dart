@@ -247,12 +247,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // ── Menü ──────────────────────────────────────────────────────
             _SectionLabel('Hesabım'),
             _LinkTile(
-              icon: Icons.workspace_premium_outlined,
-              label: 'FerXGo Süper Üye',
-              soon: true,
-              onTap: () => _soon('Süper Üye paketleri yakında.'),
-            ),
-            _LinkTile(
               icon: Icons.local_offer_outlined,
               label: 'Kampanyalar',
               subtitle: 'Kupon kodu ekle',
@@ -288,14 +282,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 label: 'Güvenlik Tercihleri',
                 soon: true,
                 onTap: () => _soon('Güvenlik tercihleri yakında.'),
-              ),
-
-            // Yolcu → sürücü olma köprüsü
-            if (!isDriver)
-              _LinkTile(
-                icon: Icons.directions_car_outlined,
-                label: 'Aracımı Paylaşmak İstiyorum',
-                onTap: () => _openUrl('https://ferxgo.com/surucu-ol'),
               ),
 
             // Favori sürücüler (yolcu)
