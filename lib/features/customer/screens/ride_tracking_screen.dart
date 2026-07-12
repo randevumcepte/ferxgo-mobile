@@ -323,8 +323,9 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
                         Icon(Icons.info_outline, color: FerxgoColors.warning, size: 18),
                         SizedBox(width: 8),
                         Expanded(child: Text(
-                          'Sık iptal, güven puanını düşürür. Çok tekrarlanırsa bir süre yeni yolculuk oluşturamayabilirsin. '
-                          'Gerçekten gerekmedikçe iptal etmeni önermeyiz.',
+                          'Eşleşme sonrası iptal, iptal cezasına tabidir. Ceza, kayıtlı kredi kartından '
+                          'otomatik tahsil edilir; çekilemezse borç bakiyene eklenir ve ödenene kadar '
+                          'yeni yolculuk oluşturamazsın. Gerçekten gerekmedikçe iptal etmeni önermeyiz.',
                           style: TextStyle(color: FerxgoColors.textMid, fontSize: 12, height: 1.4),
                         )),
                       ],
@@ -336,13 +337,39 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
                 'Sürücü bulma süreci durdurulacak. Onaylıyor musun?',
                 style: TextStyle(color: FerxgoColors.textMid),
               ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false),
-            child: Text(accepted ? 'Vazgeçtim, beklerim' : 'Vazgeç')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: FerxgoColors.danger, foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Yine de iptal et'),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: FerxgoColors.brand,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(accepted ? 'Vazgeçtim, beklerim' : 'Vazgeç',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: FerxgoColors.danger,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(accepted ? 'Yine de iptal et' : 'Talebi iptal et',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
