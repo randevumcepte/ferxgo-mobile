@@ -30,7 +30,6 @@ class NearbyDriver {
     this.isOnline = false,
     this.maxPassengers,
     this.phone,
-    this.vehiclePhotos = const [],
   });
 
   final int id;
@@ -63,9 +62,6 @@ class NearbyDriver {
   /// Araç yolcu kapasitesi + sürücü telefonu (telefon yalnız accepted payload'da gelir)
   final int? maxPassengers;
   final String? phone;
-
-  /// Görsel doğrulama için gerçek araç fotoğrafları (eşleşme sonrası dolar)
-  final List<String> vehiclePhotos;
 
   bool get isBusy => availabilityStatus == 'busy';
   bool get isOffline => !isOnline && !isBusy;
@@ -109,7 +105,6 @@ class NearbyDriver {
       isOnline: (json['is_online'] as bool?) ?? (json['availability_status'] == 'online'),
       maxPassengers: asIntOrNull(json['max_passengers']),
       phone: json['phone'] as String?,
-      vehiclePhotos: (json['vehicle_photos'] as List?)?.whereType<String>().toList() ?? const [],
     );
   }
 
@@ -138,7 +133,6 @@ class NearbyDriver {
       isOnline: isOnline,
       maxPassengers: maxPassengers,
       phone: phone,
-      vehiclePhotos: vehiclePhotos,
     );
   }
 

@@ -44,7 +44,6 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
   RideStatus? _status;
   String? _error;
   bool _busyAction = false;
-  bool _visualVerifyShown = false; // Faz 6 — görsel doğrulama modalı bir kez gösterilsin
 
   // Sohbet
   final TextEditingController _msgCtrl = TextEditingController();
@@ -92,155 +91,10 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
         _pollMessages();
         _messageTimer = Timer.periodic(AppConfig.ridePollInterval, (_) => _pollMessages());
       }
-      // Faz 6 — yolculuk başladı, görsel doğrulama gerekiyor → modalı bir kez aç
-      if (s.needsVisualVerify && !_visualVerifyShown) {
-        _visualVerifyShown = true;
-        _showVisualVerify(s);
-      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
     } catch (_) {}
-  }
-
-  /// Faz 6 — "Bindiğiniz araç bu mu?" görsel doğrulama modalı.
-  Future<void> _showVisualVerify(RideStatus s) async {
-    final drv = s.acceptedDriver;
-    if (drv == null || !mounted) {
-      _visualVerifyShown = false;
-      return;
-    }
-
-    final match = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0F0F0F),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('🛡  Bindiğiniz araç bu mu?',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: const Color(0xFF222222),
-                  backgroundImage: (drv.avatar != null && drv.avatar!.isNotEmpty)
-                      ? NetworkImage(drv.avatar!)
-                      : null,
-                  child: (drv.avatar == null || drv.avatar!.isEmpty)
-                      ? const Icon(Icons.person, color: Colors.white54)
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(drv.name,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      if (drv.vehicleLabel != null)
-                        Text(drv.vehicleLabel!, style: const TextStyle(color: Colors.white60, fontSize: 12)),
-                      if (drv.plate != null && drv.plate!.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(top: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF0C040).withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFFF0C040)),
-                          ),
-                          child: Text(drv.plate!,
-                              style: const TextStyle(
-                                  color: Color(0xFFF0C040), fontWeight: FontWeight.bold, letterSpacing: 1)),
-                        ),
-                    ],
-                  ),
-                ),
-              ]),
-              const SizedBox(height: 14),
-              if (drv.vehiclePhotos.isNotEmpty)
-                SizedBox(
-                  height: 84,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: drv.vehiclePhotos.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (_, i) => ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        drv.vehiclePhotos[i],
-                        width: 116,
-                        height: 84,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            Container(width: 116, height: 84, color: const Color(0xFF222222)),
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 10),
-              const Text('Araçtaki plaka ve fotoğraflarla karşılaştırın.',
-                  style: TextStyle(color: Colors.white38, fontSize: 11)),
-            ],
-          ),
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('EVET — Sürücü ve araç doğru',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('HAYIR — Eşleşmiyor, çağrı merkezini çağır',
-                  style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (match == null) {
-      _visualVerifyShown = false;
-      return;
-    }
-    await _submitVisualVerify(match);
-  }
-
-  Future<void> _submitVisualVerify(bool match) async {
-    try {
-      final res =
-          await ref.read(customerRideRepositoryProvider).visualVerify(widget.publicId, match);
-      if (!mounted) return;
-      final msg = (res['message'] as String?) ??
-          (match ? 'İyi yolculuklar!' : 'Çağrı merkezi bilgilendirildi.');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(msg),
-        backgroundColor: match ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-      ));
-      await _pollStatus();
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.message;
-        _visualVerifyShown = false; // tekrar denenebilsin
-      });
-    }
   }
 
   Future<void> _pollMessages() async {

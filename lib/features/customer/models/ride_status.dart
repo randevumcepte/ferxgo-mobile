@@ -25,9 +25,6 @@ class RideStatus {
     required this.customerReconfirmedAt,
     required this.pickupPosition,
     required this.pickupAddress,
-    this.startedAt,
-    this.visualVerifiedAt,
-    this.visualVerifyFailedAt,
   });
 
   /// pending | pool_expanded | awaiting_customer_reconfirm | accepted | expired | cancelled | exhausted
@@ -52,18 +49,6 @@ class RideStatus {
   final bool isFavoriteWave;
   final DateTime? reconfirmRequiredAt;
   final DateTime? customerReconfirmedAt;
-
-  /// Faz 6 — görsel doğrulama (yolculuk başladıktan sonra)
-  final DateTime? startedAt;
-  final DateTime? visualVerifiedAt;
-  final DateTime? visualVerifyFailedAt;
-
-  /// Yolculuk başladı ve müşteri henüz araç/sürücü görsel doğrulamasını yapmadı.
-  bool get needsVisualVerify =>
-      (isAccepted || status == 'in_progress') &&
-      startedAt != null &&
-      visualVerifiedAt == null &&
-      visualVerifyFailedAt == null;
 
   bool get isPending   => status == 'pending';
   bool get isAccepted  => status == 'accepted';
@@ -113,9 +98,6 @@ class RideStatus {
       customerReconfirmedAt: _parseDate(json['customer_reconfirmed_at']),
       pickupPosition: _parseLatLng(json['pickup_lat'], json['pickup_lng']),
       pickupAddress: json['pickup_address'] as String?,
-      startedAt: _parseDate(json['started_at']),
-      visualVerifiedAt: _parseDate(json['visual_verified_at']),
-      visualVerifyFailedAt: _parseDate(json['visual_verify_failed_at']),
     );
   }
 
