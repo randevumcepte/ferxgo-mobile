@@ -66,6 +66,23 @@ class BookingDraftController extends Notifier<BookingDraft> {
         estimatedFare: fare,
       );
   void reset() => state = const BookingDraft();
+
+  /// Reddedilince/iptal olunca dolu onay ekranına geri dönmek için draft'ı geri yükle.
+  void restore({
+    required Place pickup,
+    required Place dropoff,
+    required double distanceKm,
+    required int durationMinutes,
+    double? fare,
+  }) {
+    state = BookingDraft(
+      pickup: pickup,
+      dropoff: dropoff,
+      distanceKm: distanceKm,
+      durationMinutes: durationMinutes,
+      estimatedFare: fare,
+    );
+  }
 }
 
 final bookingDraftProvider = NotifierProvider<BookingDraftController, BookingDraft>(

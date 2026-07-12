@@ -18,6 +18,7 @@ import '../../../shared/widgets/error_banner.dart';
 import '../../../shared/widgets/price_stepper.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
+import '../models/place.dart';
 import '../models/ride_status.dart';
 import '../state/booking_draft.dart';
 
@@ -335,47 +336,19 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     }
   }
 
-  // ─── Kademeli yeniden gönder: 'auto' (tüm favoriler) | 'nearby' (yakındakiler) ─
-  Future<void> _resend(String mode) async {
+  // ─── Reddedilince/bulunamayınca: adres+ücret HAZIR onay ekranına geri dön.
+  // Yolcu baştan adres girmesin — hemen başka sürücü seçsin ya da tekrar yollasın.
+  void _backToBooking() {
     final snap = ref.read(lastDispatchProvider);
     if (snap == null) { context.go(AppRoutes.customerHome); return; }
-    setState(() => _busyAction = true);
-    try {
-      final res = await ref.read(customerRideRepositoryProvider).createRequest(
-        vehicleClassSlug: snap.vehicleClassSlug,
-        pickupAddress: snap.pickupAddress,
-        pickupPosition: snap.pickupPosition,
-        dropoffAddress: snap.dropoffAddress,
-        dropoffPosition: snap.dropoffPosition,
-        distanceKm: snap.distanceKm,
-        durationMinutes: snap.durationMinutes,
-        estimatedFare: snap.estimatedFare,
-        suggestedFare: snap.estimatedFare,
-        customerOfferFare: snap.offerFare ?? snap.estimatedFare,
-        dispatchMode: mode,
-        fallbackDriverIds: const [],
-      );
-      // Bir sonraki kademe için aşamayı güncelle
-      ref.read(lastDispatchProvider.notifier).state = DispatchSnapshot(
-        vehicleClassSlug: snap.vehicleClassSlug,
-        pickupAddress: snap.pickupAddress,
-        pickupPosition: snap.pickupPosition,
-        dropoffAddress: snap.dropoffAddress,
-        dropoffPosition: snap.dropoffPosition,
-        distanceKm: snap.distanceKm,
-        durationMinutes: snap.durationMinutes,
-        estimatedFare: snap.estimatedFare,
-        offerFare: snap.offerFare,
-        stage: mode == 'auto' ? 'all' : 'nearby',
-        favoriteCount: snap.favoriteCount,
-      );
-      if (!mounted) return;
-      context.go('${AppRoutes.customerRideBase}/${res.publicId}');
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
-    } finally {
-      if (mounted) setState(() => _busyAction = false);
-    }
+    ref.read(bookingDraftProvider.notifier).restore(
+      pickup: Place(position: snap.pickupPosition, displayName: snap.pickupAddress),
+      dropoff: Place(position: snap.dropoffPosition, displayName: snap.dropoffAddress),
+      distanceKm: snap.distanceKm,
+      durationMinutes: snap.durationMinutes,
+      fare: snap.estimatedFare,
+    );
+    context.go(AppRoutes.customerBookConfirm);
   }
 
   @override
@@ -401,53 +374,26 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
   }
 
   Widget _build(RideStatus s) {
-    if (s.isExpired) {
-      final snap = ref.read(lastDispatchProvider);
-      // Kademe: 1:1 (çok favori varsa) → tüm favoriler → yakındakiler → bitti
-      if (snap != null && snap.stage == 'one' && snap.favoriteCount >= 2) {
-        return _Terminal(
-          icon: Icons.hourglass_disabled,
-          title: 'Sürücü kabul etmedi',
-          message: 'Seçtiğin sürücü teklifini kabul etmedi.\n'
-              'Aynı teklifi tüm favori sürücülerine ya da yakındakilere gönderebilirsin.',
-          ctaText: 'Tüm favorilerime gönder',
-          onTap: _busyAction ? null : () => _resend('auto'),
-          color: FerxgoColors.warning,
-          secondaryText: 'Yakınımdakilere gönder',
-          onSecondary: _busyAction ? null : () => _resend('nearby'),
-        );
-      }
-      if (snap != null && snap.stage != 'nearby') {
-        // tek favori (favoriteCount<2) ya da tüm favoriler başarısız → yakındakilere
-        return _Terminal(
-          icon: Icons.hourglass_disabled,
-          title: snap.stage == 'all' ? 'Favorilerin kabul etmedi' : 'Sürücü kabul etmedi',
-          message: 'Teklifini yakınındaki (favori olmayan) müsait sürücülere gönderebilirsin.\n'
-              'Havuzdan ilk kabul eden alır.',
-          ctaText: 'Yakınımdakilere teklif gönder',
-          onTap: _busyAction ? null : () => _resend('nearby'),
-          color: FerxgoColors.warning,
-          secondaryText: 'Ana ekrana dön',
-          onSecondary: () => context.go(AppRoutes.customerHome),
-        );
-      }
-      // nearby de başarısız / snapshot yok → bitti
+    // Sürücü reddetti / bulunamadı → ana sayfaya ATMA. Adres+ücret hazır onay
+    // ekranına dön; yolcu hemen başka sürücü seçsin ya da tekrar yollasın.
+    if (s.isExpired || s.isExhausted) {
+      final canRetry = ref.read(lastDispatchProvider) != null;
       return _Terminal(
-        icon: Icons.hourglass_disabled,
-        title: 'Sürücü bulunamadı',
-        message: 'Şu an uygun sürücü çıkmadı.\nBiraz sonra tekrar dene.',
-        ctaText: 'Ana ekrana dön',
-        onTap: () => context.go(AppRoutes.customerHome),
+        icon: Icons.person_search,
+        title: 'Sürücü kabul etmedi',
+        message: 'Adresin ve teklifin hazır duruyor.\nBaşka bir sürücü seçebilir ya da teklifini tekrar gönderebilirsin.',
+        ctaText: canRetry ? 'Tekrar dene · başka sürücü' : 'Ana ekrana dön',
+        onTap: canRetry ? _backToBooking : () => context.go(AppRoutes.customerHome),
         color: FerxgoColors.warning,
+        secondaryText: canRetry ? 'Ana ekrana dön' : null,
+        onSecondary: canRetry ? () => context.go(AppRoutes.customerHome) : null,
       );
     }
-    if (s.isCancelled || s.isExhausted) {
+    if (s.isCancelled) {
       return _Terminal(
         icon: Icons.cancel_outlined,
-        title: s.isExhausted ? 'Sürücü bulunamadı' : 'Talep iptal edildi',
-        message: s.isExhausted
-            ? 'Uygun sürücü çıkmadı. Tekrar deneyebilirsin.'
-            : 'Talebin iptal edildi.',
+        title: 'Talep iptal edildi',
+        message: 'Talebin iptal edildi.',
         ctaText: 'Ana ekrana dön',
         onTap: () => context.go(AppRoutes.customerHome),
         color: FerxgoColors.danger,
