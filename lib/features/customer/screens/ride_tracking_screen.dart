@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/config/app_config.dart';
@@ -137,21 +138,64 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
   }
 
   Future<void> _cancel() async {
+    // Sürücü anlaşıldıysa (accepted) iptal cezaya tabi → güzel dille uyar.
+    final accepted = _status?.isAccepted ?? false;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: FerxgoColors.inkSoft,
-        title: const Text('Talebi iptal et?', style: TextStyle(color: FerxgoColors.textHigh)),
-        content: const Text(
-          'Sürücü bulma süreci durdurulacak. Onaylıyor musun?',
-          style: TextStyle(color: FerxgoColors.textMid),
+        title: Row(
+          children: [
+            Icon(accepted ? Icons.report_gmailerrorred : Icons.help_outline,
+              color: accepted ? FerxgoColors.warning : FerxgoColors.textMid, size: 22),
+            const SizedBox(width: 8),
+            Text(accepted ? 'Yolculuğu iptal et?' : 'Talebi iptal et?',
+              style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 17)),
+          ],
         ),
+        content: accepted
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Sürücün seni almak için yola çıktı. Şimdi iptal edersen sürücünün emeği boşa gider.',
+                    style: TextStyle(color: FerxgoColors.textMid, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: FerxgoColors.warning.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: FerxgoColors.warning.withValues(alpha: 0.4)),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline, color: FerxgoColors.warning, size: 18),
+                        SizedBox(width: 8),
+                        Expanded(child: Text(
+                          'Sık iptal, güven puanını düşürür. Çok tekrarlanırsa bir süre yeni yolculuk oluşturamayabilirsin. '
+                          'Gerçekten gerekmedikçe iptal etmeni önermeyiz.',
+                          style: TextStyle(color: FerxgoColors.textMid, fontSize: 12, height: 1.4),
+                        )),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : const Text(
+                'Sürücü bulma süreci durdurulacak. Onaylıyor musun?',
+                style: TextStyle(color: FerxgoColors.textMid),
+              ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(context, false),
+            child: Text(accepted ? 'Vazgeçtim, beklerim' : 'Vazgeç')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: FerxgoColors.danger, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('İptal et'),
+            child: const Text('Yine de iptal et'),
           ),
         ],
       ),
@@ -835,6 +879,38 @@ class _Accepted extends StatelessWidget {
     final arrived = status.arrivedAt != null;
     final confirmed = status.customerConfirmedAt != null;
 
+    // Sürücü → buluşma noktası ETA (canlı konumdan hesaplanır)
+    final pickup = status.pickupPosition;
+    int? etaMin;
+    double? distKm;
+    if (pickup != null) {
+      distKm = const Distance().as(LengthUnit.Kilometer, driver.position, pickup);
+      final raw = (distKm * 2.2 + 0.5).round();
+      etaMin = raw < 1 ? 1 : raw;
+    }
+
+    // Durum şeridi: renk + başlık + alt yazı
+    final Color stColor;
+    final String stTitle;
+    final String stSub;
+    final IconData stIcon;
+    if (confirmed) {
+      stColor = FerxgoColors.success;
+      stTitle = 'Yolculuk başladı';
+      stSub = 'İyi yolculuklar!';
+      stIcon = Icons.navigation;
+    } else if (arrived) {
+      stColor = FerxgoColors.warning;
+      stTitle = 'Sürücü buluşma noktasında';
+      stSub = 'Buluşunca "Sürücüyü gördüm"e bas';
+      stIcon = Icons.emoji_flags;
+    } else {
+      stColor = FerxgoColors.success;
+      stTitle = 'Sürücü yola çıktı';
+      stSub = etaMin != null ? '~$etaMin dk sonra yanında' : 'Sana doğru geliyor';
+      stIcon = Icons.directions_car_filled;
+    }
+
     return Stack(
       children: [
         FlutterMap(
@@ -853,30 +929,31 @@ class _Accepted extends StatelessWidget {
               maxZoom: 19,
             ),
             MarkerLayer(markers: [
+              if (pickup != null)
+                Marker(
+                  point: pickup,
+                  width: 40, height: 40,
+                  child: const Icon(Icons.person_pin_circle, color: FerxgoColors.danger, size: 34),
+                ),
+              // Sürücünün canlı konumu — üstünde ismi (web pin'i gibi)
               Marker(
                 point: driver.position,
-                width: 60, height: 60,
-                child: const Icon(Icons.local_taxi, color: FerxgoColors.brand, size: 36),
+                width: 140, height: 62,
+                child: _DriverMapMarker(name: driver.name, etaMin: arrived ? null : etaMin),
               ),
             ]),
           ],
         ),
-        // Üst durum şeridi
+        // Üst durum şeridi — belirgin, renkli
         Positioned(
           top: 12, left: 12, right: 12,
-          child: _StatusStrip(
-            text: confirmed
-                ? 'Yolculuk başladı'
-                : arrived
-                    ? 'Sürücü vardı — buluştuğunda "geldim" e bas'
-                    : 'Sürücü yola çıktı',
-          ),
+          child: _StatusStrip(color: stColor, title: stTitle, subtitle: stSub, icon: stIcon),
         ),
 
         // Alt panel
         DraggableScrollableSheet(
-          initialChildSize: chatOpen ? 0.7 : 0.34,
-          minChildSize: 0.22,
+          initialChildSize: chatOpen ? 0.7 : 0.40,
+          minChildSize: 0.26,
           maxChildSize: 0.85,
           builder: (ctx, sc) => Container(
             decoration: const BoxDecoration(
@@ -894,7 +971,11 @@ class _Accepted extends StatelessWidget {
                 Container(width: 36, height: 4, decoration: BoxDecoration(color: FerxgoColors.line, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 12),
                 _DriverHeader(driver: driver, onChat: onToggleChat, chatOpen: chatOpen),
-                const Divider(color: FerxgoColors.line, height: 24),
+                if (!chatOpen) ...[
+                  const SizedBox(height: 10),
+                  _RideInfoRow(etaMin: etaMin, distKm: distKm, arrived: arrived),
+                ],
+                const Divider(color: FerxgoColors.line, height: 20),
 
                 if (error != null) Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -928,25 +1009,124 @@ class _Accepted extends StatelessWidget {
   }
 }
 
+/// Haritada sürücü konumu — üstünde isim + ETA (web pin'i gibi).
+class _DriverMapMarker extends StatelessWidget {
+  const _DriverMapMarker({required this.name, this.etaMin});
+  final String name;
+  final int? etaMin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: FerxgoColors.brand,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 2))],
+          ),
+          child: Text(
+            etaMin != null ? '$name · $etaMin dk' : name,
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w800),
+          ),
+        ),
+        const Icon(Icons.local_taxi, color: FerxgoColors.brand, size: 30),
+      ],
+    );
+  }
+}
+
+/// Sürücü→buluşma ETA + mesafe (kabul ekranı bilgi satırı).
+class _RideInfoRow extends StatelessWidget {
+  const _RideInfoRow({required this.etaMin, required this.distKm, required this.arrived});
+  final int? etaMin;
+  final double? distKm;
+  final bool arrived;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(child: _cell(
+            Icons.schedule,
+            arrived ? 'Vardı' : (etaMin != null ? '~$etaMin dk' : '—'),
+            arrived ? 'Buluşma' : 'Tahmini varış',
+          )),
+          const SizedBox(width: 10),
+          Expanded(child: _cell(
+            Icons.route,
+            distKm != null ? '${distKm!.toStringAsFixed(1)} km' : '—',
+            'Uzaklık',
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _cell(IconData icon, String value, String label) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: FerxgoColors.inkMuted,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: FerxgoColors.brand, size: 18),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(value, style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w800, fontSize: 15)),
+                Text(label, style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
+              ],
+            ),
+          ],
+        ),
+      );
+}
+
 class _StatusStrip extends StatelessWidget {
-  const _StatusStrip({required this.text});
-  final String text;
+  const _StatusStrip({required this.color, required this.title, required this.subtitle, required this.icon});
+  final Color color;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: FerxgoColors.ink.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: FerxgoColors.line),
+        gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.82)]),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
-          const Icon(Icons.directions_car_filled, color: FerxgoColors.brand, size: 18),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text,
-            style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w700, fontSize: 13),
-          )),
+          Container(
+            width: 34, height: 34,
+            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.18), shape: BoxShape.circle),
+            alignment: Alignment.center,
+            child: Icon(icon, color: Colors.white, size: 19),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
+                Text(subtitle,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12)),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -959,8 +1139,24 @@ class _DriverHeader extends StatelessWidget {
   final VoidCallback onChat;
   final bool chatOpen;
 
+  Future<void> _call() async {
+    final phone = driver.phone;
+    if (phone == null || phone.isEmpty) return;
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Araç: "Marka Model · Yıl · N kişi" (plaka gösterilmez)
+    final vehicleParts = <String>[
+      if (driver.vehicleLabel != null && driver.vehicleLabel!.isNotEmpty) driver.vehicleLabel!,
+      if (driver.vehicleYear != null) '${driver.vehicleYear}',
+      if (driver.maxPassengers != null) '${driver.maxPassengers} kişi',
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -972,35 +1168,78 @@ class _DriverHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(26),
             ),
             alignment: Alignment.center,
-            child: const Icon(Icons.person, color: FerxgoColors.brand),
+            child: const Icon(Icons.person, color: FerxgoColors.brand, size: 28),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(driver.fullName,
+                Text(driver.fullName.isNotEmpty ? driver.fullName : driver.name,
                   style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 17, fontWeight: FontWeight.w800),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  [
-                    if (driver.vehicleClass != null) driver.vehicleClass,
-                    if (driver.plate != null) driver.plate,
-                  ].whereType<String>().join(' · '),
-                  style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    const Icon(Icons.star, color: FerxgoColors.brand, size: 13),
+                    const SizedBox(width: 2),
+                    Text(driver.rating.toStringAsFixed(1),
+                      style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12, fontWeight: FontWeight.w600)),
+                    if (driver.trips > 0) ...[
+                      const SizedBox(width: 8),
+                      Text('${driver.trips} yolculuk',
+                        style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
+                    ],
+                  ],
                 ),
+                if (vehicleParts.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(vehicleParts.join(' · '),
+                    style: const TextStyle(color: FerxgoColors.textMid, fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
             ),
           ),
-          IconButton.filledTonal(
-            onPressed: onChat,
-            icon: Icon(chatOpen ? Icons.close : Icons.chat_bubble_outline),
+          // Ara + Mesaj
+          if (driver.phone != null && driver.phone!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: _RoundBtn(icon: Icons.call, color: FerxgoColors.success, onTap: _call, tooltip: 'Ara'),
+            ),
+          _RoundBtn(
+            icon: chatOpen ? Icons.close : Icons.chat_bubble_outline,
+            color: FerxgoColors.brand,
+            onTap: onChat,
             tooltip: chatOpen ? 'Kapat' : 'Mesaj',
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RoundBtn extends StatelessWidget {
+  const _RoundBtn({required this.icon, required this.color, required this.onTap, required this.tooltip});
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: color.withValues(alpha: 0.16),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(width: 44, height: 44, child: Icon(icon, color: color, size: 21)),
+        ),
       ),
     );
   }

@@ -217,7 +217,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                       MarkerLayer(
                         markers: _result!.drivers.map((d) => Marker(
                           point: d.position,
-                          width: 60, height: 60,
+                          width: 130, height: 56,
                           child: _DriverPinIcon(driver: d),
                         )).toList(growable: false),
                       ),
@@ -565,8 +565,9 @@ class _DriverPinIcon extends StatelessWidget {
             boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 2))],
           ),
           child: Text(
-            '${driver.etaMinutes} dk',
-            style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w800),
+            driver.name.isNotEmpty ? '${driver.name} · ${driver.etaMinutes} dk' : '${driver.etaMinutes} dk',
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800),
           ),
         ),
         const Icon(Icons.local_taxi, color: FerxgoColors.brand, size: 24),

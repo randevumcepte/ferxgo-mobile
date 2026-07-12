@@ -28,6 +28,8 @@ class NearbyDriver {
     this.womenOnly = false,
     this.availabilityStatus,
     this.isOnline = false,
+    this.maxPassengers,
+    this.phone,
   });
 
   final int id;
@@ -56,6 +58,10 @@ class NearbyDriver {
   /// Canlı müsaitlik (favoriler ekranında rozet): online | offline | busy
   final String? availabilityStatus;
   final bool isOnline;
+
+  /// Araç yolcu kapasitesi + sürücü telefonu (telefon yalnız accepted payload'da gelir)
+  final int? maxPassengers;
+  final String? phone;
 
   bool get isBusy => availabilityStatus == 'busy';
   bool get isOffline => !isOnline && !isBusy;
@@ -97,6 +103,8 @@ class NearbyDriver {
       womenOnly: (json['women_only'] as bool?) ?? false,
       availabilityStatus: json['availability_status'] as String?,
       isOnline: (json['is_online'] as bool?) ?? (json['availability_status'] == 'online'),
+      maxPassengers: asIntOrNull(json['max_passengers']),
+      phone: json['phone'] as String?,
     );
   }
 
@@ -123,6 +131,8 @@ class NearbyDriver {
       womenOnly: womenOnly,
       availabilityStatus: availabilityStatus,
       isOnline: isOnline,
+      maxPassengers: maxPassengers,
+      phone: phone,
     );
   }
 

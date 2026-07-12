@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../shared/models/negotiation.dart';
 import 'nearby_driver.dart';
@@ -22,6 +23,8 @@ class RideStatus {
     required this.isFavoriteWave,
     required this.reconfirmRequiredAt,
     required this.customerReconfirmedAt,
+    required this.pickupPosition,
+    required this.pickupAddress,
   });
 
   /// pending | pool_expanded | awaiting_customer_reconfirm | accepted | expired | cancelled | exhausted
@@ -37,6 +40,10 @@ class RideStatus {
   final DateTime? customerConfirmedAt;
   final DateTime? noShowAt;
   final Negotiation? negotiation;
+
+  /// Buluşma noktası (sürücü→pickup ETA + harita için)
+  final LatLng? pickupPosition;
+  final String? pickupAddress;
 
   /// Auto ("Hadi Gidelim") dağıtımı — favori dalgası mı, yakın havuz mu
   final bool isFavoriteWave;
@@ -89,7 +96,16 @@ class RideStatus {
       isFavoriteWave: (json['is_favorite_wave'] as bool?) ?? false,
       reconfirmRequiredAt: _parseDate(json['reconfirm_required_at']),
       customerReconfirmedAt: _parseDate(json['customer_reconfirmed_at']),
+      pickupPosition: _parseLatLng(json['pickup_lat'], json['pickup_lng']),
+      pickupAddress: json['pickup_address'] as String?,
     );
+  }
+
+  static LatLng? _parseLatLng(Object? lat, Object? lng) {
+    final la = (lat as num?)?.toDouble();
+    final ln = (lng as num?)?.toDouble();
+    if (la == null || ln == null) return null;
+    return LatLng(la, ln);
   }
 
   static DateTime? _parseDate(Object? raw) {
