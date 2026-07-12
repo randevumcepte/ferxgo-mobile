@@ -48,6 +48,7 @@ class AuthUser {
     required this.phone,
     required this.type,
     this.avatar,
+    this.rating,
   });
 
   final int id;
@@ -55,6 +56,7 @@ class AuthUser {
   final String? phone;
   final String type; // customer | driver
   final String? avatar;
+  final double? rating; // header yıldız puanı (yeni kullanıcıda 5.0)
 
   bool get isCustomer => type == 'customer';
   bool get isDriver   => type == 'driver';
@@ -65,6 +67,7 @@ class AuthUser {
         'phone': phone,
         'type': type,
         'avatar': avatar,
+        'rating': rating,
       };
 
   static AuthUser fromJson(Map<String, dynamic> json) => AuthUser(
@@ -73,5 +76,6 @@ class AuthUser {
         phone: json['phone'] as String?,
         type: json['type'] as String,
         avatar: json['avatar'] as String?,
+        rating: (json['rating'] as num?)?.toDouble(),
       );
 }
