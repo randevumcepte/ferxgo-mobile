@@ -36,6 +36,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   String? _error;
   bool _busy = false; // online toggle / offer aksiyonları
 
+  // Görünürlük/hizmet çapı (km) — slider ile ayarlanır.
+  double? _radiusDraft;
+  bool _radiusBusy = false;
+
   LatLng? _myPosition;
 
   // Aktif yolculuk chat
@@ -137,6 +141,27 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  // ─── Görünürlük çapı ──────────────────────────────────────
+  Future<void> _setRadius(double km) async {
+    setState(() => _radiusBusy = true);
+    try {
+      final saved = await _repo.setServiceRadius(km);
+      if (!mounted) return;
+      setState(() => _radiusDraft = saved);
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(
+          content: Text('Görünürlük çapın ${saved.toStringAsFixed(saved % 1 == 0 ? 0 : 1)} km olarak kaydedildi.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: FerxgoColors.inkMuted,
+        ));
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _radiusBusy = false);
     }
   }
 
@@ -316,6 +341,15 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               value: '${d.totalRides}', label: 'Yolculuk',
             )),
           ],
+        ),
+        const SizedBox(height: 16),
+
+        // Görünürlük/hizmet çapı
+        _ServiceRadiusCard(
+          value: (_radiusDraft ?? d.serviceRadiusKm).clamp(2.0, 20.0),
+          busy: _radiusBusy,
+          onChanged: (v) => setState(() => _radiusDraft = v),
+          onChangeEnd: _setRadius,
         ),
         const SizedBox(height: 20),
 
@@ -641,6 +675,81 @@ class _StatTile extends StatelessWidget {
           const SizedBox(height: 8),
           Text(value, style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 22, fontWeight: FontWeight.w800)),
           Text(label, style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Görünürlük/hizmet çapı kartı — 2..20 km slider (0.5 adım).
+class _ServiceRadiusCard extends StatelessWidget {
+  const _ServiceRadiusCard({
+    required this.value,
+    required this.busy,
+    required this.onChanged,
+    required this.onChangeEnd,
+  });
+  final double value;
+  final bool busy;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = value % 1 == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+      decoration: BoxDecoration(
+        color: FerxgoColors.inkSoft,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: FerxgoColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.my_location, color: FerxgoColors.brand, size: 20),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text('Görünürlük çapım',
+                  style: TextStyle(color: FerxgoColors.textHigh, fontSize: 15, fontWeight: FontWeight.w700)),
+              ),
+              Text('$label km',
+                style: const TextStyle(color: FerxgoColors.brand, fontSize: 18, fontWeight: FontWeight.w900)),
+            ],
+          ),
+          const SizedBox(height: 2),
+          const Text('Yalnızca çevrende bu mesafedeki yolculara görünür ve eşleşirsin.',
+            style: TextStyle(color: FerxgoColors.textLow, fontSize: 12, height: 1.3)),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: FerxgoColors.brand,
+              inactiveTrackColor: FerxgoColors.inkMuted,
+              thumbColor: FerxgoColors.brand,
+              overlayColor: FerxgoColors.brand.withValues(alpha: 0.15),
+              valueIndicatorColor: FerxgoColors.brand,
+            ),
+            child: Slider(
+              value: value,
+              min: 2,
+              max: 20,
+              divisions: 36, // 0.5 km adım
+              label: '$label km',
+              onChanged: busy ? null : onChanged,
+              onChangeEnd: onChangeEnd,
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('2 km', style: TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
+                Text('20 km', style: TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
+              ],
+            ),
+          ),
         ],
       ),
     );

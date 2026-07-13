@@ -54,6 +54,7 @@ class DriverInfo {
     required this.totalRides,
     required this.isFemale,
     required this.womenOnly,
+    required this.serviceRadiusKm,
   });
 
   final int id;
@@ -64,6 +65,9 @@ class DriverInfo {
   final bool isFemale;
   final bool womenOnly;
 
+  /// Sürücünün görünürlük/hizmet çapı (km) — 2..20 arası.
+  final double serviceRadiusKm;
+
   static DriverInfo fromJson(Map<String, dynamic> json) => DriverInfo(
         id: asIntOr(json['id'], 0),
         name: (json['name'] as String?) ?? 'Sürücü',
@@ -72,6 +76,7 @@ class DriverInfo {
         totalRides: asIntOr(json['total_rides'], 0),
         isFemale: (json['is_female'] as bool?) ?? false,
         womenOnly: (json['women_only'] as bool?) ?? false,
+        serviceRadiusKm: asDoubleOr(json['service_radius_km'], 5),
       );
 }
 

@@ -32,6 +32,12 @@ class DriverRepository {
     return (res['women_only'] as bool?) ?? enabled;
   }
 
+  /// Görünürlük/hizmet çapı (km, 2..20). Backend 0.5 adımına yuvarlar.
+  Future<double> setServiceRadius(double radiusKm) async {
+    final res = await _api.postJson('/driver/service-radius', body: {'radius_km': radiusKm});
+    return (res['service_radius_km'] as num?)?.toDouble() ?? radiusKm;
+  }
+
   /// Periyodik konum güncellemesi (online iken, ~20-30 sn'de bir).
   Future<void> updateLocation(double lat, double lng) async {
     await _api.postJson('/driver/location', body: {'lat': lat, 'lng': lng});
