@@ -962,46 +962,51 @@ class _ActiveActions extends StatelessWidget {
         const SizedBox(height: 16),
 
         if (!active.started) ...[
-          // Varış durumu
-          if (!active.arrived)
-            OutlinedButton.icon(
+          if (!active.arrived) ...[
+            // 1) Önce buluşma noktasına varış bildir → yolcunun kodu görünür
+            FilledButton.icon(
               onPressed: busy ? null : onArrived,
-              icon: const Icon(Icons.emoji_flags, color: FerxgoColors.brand),
-              label: const Text('Buluşma noktasına vardım', style: TextStyle(color: FerxgoColors.brand)),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: FerxgoColors.brand),
-                minimumSize: const Size(double.infinity, 50),
+              icon: const Icon(Icons.emoji_flags),
+              label: const Text('Buluşma noktasına vardım'),
+              style: FilledButton.styleFrom(
+                backgroundColor: FerxgoColors.brand, foregroundColor: Colors.black,
+                minimumSize: const Size(double.infinity, 54),
               ),
-            )
-          else
+            ),
+            const SizedBox(height: 6),
+            const Text('Vardığında bildir; yolcunun ekranında eşleşme kodu belirir.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
+          ] else ...[
+            // 2) Vardı → yolcudan kodu al, gir, başlat
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: FerxgoColors.inkMuted, borderRadius: BorderRadius.circular(12)),
               child: const Row(
                 children: [
-                  Icon(Icons.hourglass_top, color: FerxgoColors.warning, size: 20),
+                  Icon(Icons.check_circle, color: FerxgoColors.success, size: 20),
                   SizedBox(width: 10),
-                  Expanded(child: Text('Vardın. Yolcuyla buluş ve kodu iste.',
+                  Expanded(child: Text('Buluşma noktasındasın. Yolcudan 4 haneli kodu iste.',
                     style: TextStyle(color: FerxgoColors.textMid, fontSize: 13))),
                 ],
               ),
             ),
-          const SizedBox(height: 12),
-
-          // ANA AKSİYON — eşleşme kodu ile yolculuğu başlat
-          FilledButton.icon(
-            onPressed: busy ? null : onStart,
-            icon: const Icon(Icons.vpn_key),
-            label: const Text('Yolculuğu başlat'),
-            style: FilledButton.styleFrom(
-              backgroundColor: FerxgoColors.success, foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 54),
+            const SizedBox(height: 12),
+            // ANA AKSİYON — eşleşme kodu ile yolculuğu başlat
+            FilledButton.icon(
+              onPressed: busy ? null : onStart,
+              icon: const Icon(Icons.vpn_key),
+              label: const Text('Yolculuğu başlat'),
+              style: FilledButton.styleFrom(
+                backgroundColor: FerxgoColors.success, foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 54),
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          const Text('Yolcunun uygulamasındaki 4 haneli kodu girerek başlat.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
+            const SizedBox(height: 6),
+            const Text('Yolcunun söylediği 4 haneli kodu girerek başlat.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
+          ],
           const SizedBox(height: 10),
 
           if (!active.confirmed)
