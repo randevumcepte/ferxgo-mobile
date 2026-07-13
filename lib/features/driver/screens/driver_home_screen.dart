@@ -547,6 +547,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                           onNoShow: () => _confirmNoShow(),
                           onComplete: () => _confirmComplete(),
                           onStart: () => _startWithCode(),
+                          onCancelRide: () => _confirmCancelActive(),
                         ),
                 ),
                 if (_chatOpen) _DriverMessageInput(
@@ -641,6 +642,14 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       },
     );
     if (ok == true) await _poll();
+  }
+
+  Future<void> _confirmCancelActive() async {
+    final ok = await _confirm('Yolculuğu iptal et?',
+        'Aktif yolculuk iptal edilecek ve tekrar çevrimiçi olacaksın. Emin misin?',
+        'Yolculuğu iptal et', FerxgoColors.danger);
+    if (ok != true) return;
+    await _runActive(_repo.cancelActive);
   }
 
   Future<void> _confirmComplete() async {
@@ -929,6 +938,7 @@ class _ActiveActions extends StatelessWidget {
     required this.onNoShow,
     required this.onComplete,
     required this.onStart,
+    required this.onCancelRide,
   });
   final DriverActive active;
   final bool busy;
@@ -937,6 +947,7 @@ class _ActiveActions extends StatelessWidget {
   final VoidCallback onNoShow;
   final VoidCallback onComplete;
   final VoidCallback onStart;
+  final VoidCallback onCancelRide;
 
   @override
   Widget build(BuildContext context) {
@@ -1036,6 +1047,14 @@ class _ActiveActions extends StatelessWidget {
             ),
           ),
         ],
+
+        // Kaçış: takılan / iptal gereken yolculuğu kapat (her durumda)
+        const SizedBox(height: 6),
+        TextButton.icon(
+          onPressed: busy ? null : onCancelRide,
+          icon: const Icon(Icons.close, color: FerxgoColors.danger, size: 18),
+          label: const Text('Yolculuğu iptal et', style: TextStyle(color: FerxgoColors.danger)),
+        ),
       ],
     );
   }

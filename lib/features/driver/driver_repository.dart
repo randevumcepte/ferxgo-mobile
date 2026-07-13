@@ -79,6 +79,11 @@ class DriverRepository {
     await _api.postJson('/driver/active/complete');
   }
 
+  /// Aktif yolculuğu iptal et / takılan durumu kapat → sürücü tekrar online.
+  Future<void> cancelActive() async {
+    await _api.postJson('/driver/active/cancel');
+  }
+
   Future<RideMessage> sendMessage(String body) async {
     final res = await _api.postJson('/driver/active/message', body: {'body': body});
     return RideMessage.fromJson((res['message'] as Map).cast<String, dynamic>());
