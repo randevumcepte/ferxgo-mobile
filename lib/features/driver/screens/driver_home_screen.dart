@@ -15,6 +15,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/error_banner.dart';
 import '../../../shared/widgets/price_stepper.dart';
 import '../../customer/models/ride_status.dart' show RideMessage;
+import '../../safety/panic_button.dart';
 import '../driver_repository.dart';
 import '../models/driver_state.dart';
 
@@ -512,6 +513,15 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 ),
             ]),
           ],
+        ),
+        // Acil yardım (panik) butonu — sol üstte
+        Positioned(
+          top: 12, left: 14,
+          child: PanicButton(
+            ridePublicId: a.publicId,
+            shareDescription: 'Yolcu: ${a.customerName}. '
+                'Güzergah: ${a.pickupAddress} → ${a.dropoffAddress}.',
+          ),
         ),
 
         DraggableScrollableSheet(

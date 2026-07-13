@@ -16,6 +16,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/negotiation.dart';
 import '../../../shared/widgets/error_banner.dart';
 import '../../../shared/widgets/price_stepper.dart';
+import '../../safety/panic_button.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
 import '../models/place.dart';
@@ -621,6 +622,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     // accepted
     return _Accepted(
       status: s,
+      publicId: widget.publicId,
       mapController: _map,
       focus: _focus,
       messages: _messages,
@@ -975,6 +977,7 @@ class _Reconfirm extends StatelessWidget {
 class _Accepted extends StatelessWidget {
   const _Accepted({
     required this.status,
+    required this.publicId,
     required this.mapController,
     required this.focus,
     required this.messages,
@@ -992,6 +995,7 @@ class _Accepted extends StatelessWidget {
   });
 
   final RideStatus status;
+  final String publicId;
   final MapController mapController;
   final LatLng focus;
   final List<RideMessage> messages;
@@ -1082,6 +1086,16 @@ class _Accepted extends StatelessWidget {
         Positioned(
           top: 12, left: 12, right: 12,
           child: _StatusStrip(color: stColor, title: stTitle, subtitle: stSub, icon: stIcon),
+        ),
+        // Acil yardım (panik) butonu — durum şeridinin altında sağda
+        Positioned(
+          top: 86, right: 14,
+          child: PanicButton(
+            ridePublicId: publicId,
+            shareDescription: 'Sürücü: ${driver.name}'
+                '${driver.vehicleLabel != null ? ', ${driver.vehicleLabel}' : ''}'
+                '${driver.plate != null ? ' (${driver.plate})' : ''}.',
+          ),
         ),
 
         // Alt panel
