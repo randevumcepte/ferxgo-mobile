@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/config/app_config.dart';
@@ -16,6 +15,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/negotiation.dart';
 import '../../../shared/widgets/error_banner.dart';
 import '../../../shared/widgets/price_stepper.dart';
+import '../../call/call_overlay.dart';
 import '../../safety/panic_button.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
@@ -620,23 +620,35 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
       );
     }
     // accepted
-    return _Accepted(
-      status: s,
-      publicId: widget.publicId,
-      mapController: _map,
-      focus: _focus,
-      messages: _messages,
-      msgCtrl: _msgCtrl,
-      msgScroll: _msgScroll,
-      sendingMsg: _sendingMsg,
-      onSend: _send,
-      chatOpen: _chatOpen,
-      onToggleChat: () => setState(() => _chatOpen = !_chatOpen),
-      onConfirm: _busyAction ? null : _confirmArrival,
-      onCancel: _busyAction ? null : _cancel,
-      busyAction: _busyAction,
-      error: _error,
-      onErrorClose: () => setState(() => _error = null),
+    final drv = s.acceptedDriver;
+    final driverName = drv == null
+        ? 'Sürücü'
+        : (drv.fullName.isNotEmpty ? drv.fullName : drv.name);
+    final callArg = (publicId: widget.publicId, peerName: driverName);
+    return Stack(
+      children: [
+        _Accepted(
+          status: s,
+          publicId: widget.publicId,
+          mapController: _map,
+          focus: _focus,
+          messages: _messages,
+          msgCtrl: _msgCtrl,
+          msgScroll: _msgScroll,
+          sendingMsg: _sendingMsg,
+          onSend: _send,
+          chatOpen: _chatOpen,
+          onToggleChat: () => setState(() => _chatOpen = !_chatOpen),
+          onConfirm: _busyAction ? null : _confirmArrival,
+          onCancel: _busyAction ? null : _cancel,
+          onCall: () => startCallFor(ref, callArg),
+          busyAction: _busyAction,
+          error: _error,
+          onErrorClose: () => setState(() => _error = null),
+        ),
+        // Uygulama-içi sesli arama (gelen çağrı da burada yakalanır)
+        CallOverlay(publicId: widget.publicId, peerName: driverName),
+      ],
     );
   }
 }
@@ -989,6 +1001,7 @@ class _Accepted extends StatelessWidget {
     required this.onToggleChat,
     required this.onConfirm,
     required this.onCancel,
+    required this.onCall,
     required this.busyAction,
     required this.error,
     required this.onErrorClose,
@@ -996,6 +1009,7 @@ class _Accepted extends StatelessWidget {
 
   final RideStatus status;
   final String publicId;
+  final VoidCallback onCall;
   final MapController mapController;
   final LatLng focus;
   final List<RideMessage> messages;
@@ -1155,7 +1169,7 @@ class _Accepted extends StatelessWidget {
                 const SizedBox(height: 10),
                 Container(width: 36, height: 4, decoration: BoxDecoration(color: FerxgoColors.line, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 12),
-                _DriverHeader(driver: driver, onChat: onToggleChat, chatOpen: chatOpen),
+                _DriverHeader(driver: driver, onChat: onToggleChat, chatOpen: chatOpen, onCall: onCall),
                 if (!chatOpen) ...[
                   if (status.matchCode != null && !started) ...[
                     const SizedBox(height: 12),
@@ -1515,19 +1529,11 @@ class _StatusStrip extends StatelessWidget {
 }
 
 class _DriverHeader extends StatelessWidget {
-  const _DriverHeader({required this.driver, required this.onChat, required this.chatOpen});
+  const _DriverHeader({required this.driver, required this.onChat, required this.chatOpen, required this.onCall});
   final NearbyDriver driver;
   final VoidCallback onChat;
   final bool chatOpen;
-
-  Future<void> _call() async {
-    final phone = driver.phone;
-    if (phone == null || phone.isEmpty) return;
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
-  }
+  final VoidCallback onCall;
 
   @override
   Widget build(BuildContext context) {
@@ -1584,12 +1590,11 @@ class _DriverHeader extends StatelessWidget {
               ],
             ),
           ),
-          // Ara + Mesaj
-          if (driver.phone != null && driver.phone!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: _RoundBtn(icon: Icons.call, color: FerxgoColors.success, onTap: _call, tooltip: 'Ara'),
-            ),
+          // Uygulama-içi sesli arama (WebRTC) + Mesaj
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: _RoundBtn(icon: Icons.call, color: FerxgoColors.success, onTap: onCall, tooltip: 'Ara'),
+          ),
           _RoundBtn(
             icon: chatOpen ? Icons.close : Icons.chat_bubble_outline,
             color: FerxgoColors.brand,

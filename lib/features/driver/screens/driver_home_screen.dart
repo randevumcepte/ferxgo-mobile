@@ -14,6 +14,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/error_banner.dart';
 import '../../../shared/widgets/price_stepper.dart';
+import '../../call/call_overlay.dart';
 import '../../customer/models/ride_status.dart' show RideMessage;
 import '../../safety/panic_button.dart';
 import '../driver_repository.dart';
@@ -543,7 +544,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 const SizedBox(height: 10),
                 Container(width: 36, height: 4, decoration: BoxDecoration(color: FerxgoColors.line, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 12),
-                _ActiveHeader(active: a, chatOpen: _chatOpen, onChat: () => setState(() => _chatOpen = !_chatOpen)),
+                _ActiveHeader(
+                  active: a, chatOpen: _chatOpen,
+                  onChat: () => setState(() => _chatOpen = !_chatOpen),
+                  onCall: () => startCallFor(ref, (publicId: a.publicId, peerName: a.customerName)),
+                ),
                 const Divider(color: FerxgoColors.line, height: 20),
                 if (_error != null) Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -567,6 +572,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             ),
           ),
         ),
+        // Uygulama-içi sesli arama overlay (gelen çağrı + aktif görüşme)
+        CallOverlay(publicId: a.publicId, peerName: a.customerName),
       ],
     );
   }
@@ -880,7 +887,8 @@ class _RouteRow extends StatelessWidget {
 }
 
 class _ActiveHeader extends StatelessWidget {
-  const _ActiveHeader({required this.active, required this.chatOpen, required this.onChat});
+  const _ActiveHeader({required this.active, required this.chatOpen, required this.onChat, required this.onCall});
+  final VoidCallback onCall;
   final DriverActive active;
   final bool chatOpen;
   final VoidCallback onChat;
@@ -933,12 +941,26 @@ class _ActiveHeader extends StatelessWidget {
               ],
             ),
           ),
-          if (active.customerPhone != null)
-            IconButton.filledTonal(
-              onPressed: onChat,
-              icon: Icon(chatOpen ? Icons.close : Icons.chat_bubble_outline),
-              tooltip: chatOpen ? 'Kapat' : 'Mesaj',
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton.filledTonal(
+                onPressed: onCall,
+                icon: const Icon(Icons.call),
+                tooltip: 'Ara',
+                style: IconButton.styleFrom(
+                  backgroundColor: FerxgoColors.success.withValues(alpha: 0.2),
+                  foregroundColor: FerxgoColors.success,
+                ),
+              ),
+              const SizedBox(width: 6),
+              IconButton.filledTonal(
+                onPressed: onChat,
+                icon: Icon(chatOpen ? Icons.close : Icons.chat_bubble_outline),
+                tooltip: chatOpen ? 'Kapat' : 'Mesaj',
+              ),
+            ],
+          ),
         ],
       ),
     );
