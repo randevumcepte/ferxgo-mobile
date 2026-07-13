@@ -9,6 +9,7 @@ import '../../core/routing/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/auth_repository.dart';
 import '../driver/driver_repository.dart';
+import 'account_screens.dart';
 
 /// Profil / hesabım — her iki rol için.
 /// Düzen Martı profilini örnek alır (üst kart + hızlı butonlar + menü), stil
@@ -170,9 +171,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-                        // "Hesabım ›" — hesap detay/düzenleme (yakında)
+                        // "Hesabım ›" — hesap yönetim ekranı (Kişisel Bilgiler,
+                        // Doğrulama, Kaydedilen Yerler, Fatura, Diğer)
                         InkWell(
-                          onTap: () => _soon('Hesap detayları yakında.'),
+                          onTap: () => Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const AccountScreen())),
                           borderRadius: BorderRadius.circular(6),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
