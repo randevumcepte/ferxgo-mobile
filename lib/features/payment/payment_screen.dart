@@ -48,19 +48,7 @@ class PaymentScreen extends StatelessWidget {
             _ExplainRow(
               icon: Icons.payments_outlined,
               title: 'Yolculuk ücreti: nakit veya havale',
-              body: 'Ücreti doğrudan sürücüne ödersin. FerXGo yolculuk ücretine dokunmaz, komisyon kesmez.',
-            ),
-            SizedBox(height: 14),
-            _ExplainRow(
-              icon: Icons.credit_card,
-              title: 'Kart yalnızca ceza için',
-              body: 'Eşleşme sonrası iptal veya no-show durumunda, uygulamada bildirilen sabit ceza kayıtlı kartından çekilir. Yolculuk ücreti bu karttan asla çekilmez.',
-            ),
-            SizedBox(height: 14),
-            _ExplainRow(
-              icon: Icons.verified_user_outlined,
-              title: 'Güvenli saklama',
-              body: 'Kart bilgilerin FerXGo\'da tutulmaz; ödeme altyapısı (İyzico) tarafından güvenli şekilde saklanır.',
+              body: 'Ücreti doğrudan sürücüne ödersin. Yolculuk ücretine karışmıyor, komisyon almıyoruz.',
             ),
           ],
         ),
