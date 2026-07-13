@@ -25,6 +25,9 @@ class RideStatus {
     required this.customerReconfirmedAt,
     required this.pickupPosition,
     required this.pickupAddress,
+    this.dropoffPosition,
+    this.dropoffAddress,
+    this.tripDistanceKm,
     this.matchCode,
     this.startedAt,
     this.visualVerifiedAt,
@@ -48,6 +51,11 @@ class RideStatus {
   /// Buluşma noktası (sürücü→pickup ETA + harita için)
   final LatLng? pickupPosition;
   final String? pickupAddress;
+
+  /// Varış noktası + toplam yolculuk mesafesi — ilerleme takibi için
+  final LatLng? dropoffPosition;
+  final String? dropoffAddress;
+  final double? tripDistanceKm;
 
   /// Eşleşme kodu — yolcuya gösterilir, sürücü buluşmada girer (yolculuk başlar).
   /// Yolculuk başlayınca backend null döndürür.
@@ -121,6 +129,9 @@ class RideStatus {
       customerReconfirmedAt: _parseDate(json['customer_reconfirmed_at']),
       pickupPosition: _parseLatLng(json['pickup_lat'], json['pickup_lng']),
       pickupAddress: json['pickup_address'] as String?,
+      dropoffPosition: _parseLatLng(json['dropoff_lat'], json['dropoff_lng']),
+      dropoffAddress: json['dropoff_address'] as String?,
+      tripDistanceKm: (json['trip_distance_km'] as num?)?.toDouble(),
       matchCode: json['match_code'] as String?,
       startedAt: _parseDate(json['started_at']),
       visualVerifiedAt: _parseDate(json['visual_verified_at']),

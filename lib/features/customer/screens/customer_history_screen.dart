@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/error_banner.dart';
 import '../customer_ride_repository.dart';
@@ -94,6 +96,11 @@ class _RideTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: () {
+          // Yalnızca DEVAM EDEN yolculuk tıklanınca takip ekranı açılır.
+          if (item.isActive && item.requestPublicId != null) {
+            context.push('${AppRoutes.customerRideBase}/${item.requestPublicId}');
+            return;
+          }
           ScaffoldMessenger.of(context)
             ..clearSnackBars()
             ..showSnackBar(SnackBar(
@@ -156,6 +163,27 @@ class _RideTile extends StatelessWidget {
                     ),
                 ],
               ),
+              // Devam eden yolculuk → takibe geri dön şeridi
+              if (item.isActive && item.requestPublicId != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: FerxgoColors.brand.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.4)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.navigation, color: FerxgoColors.brand, size: 18),
+                      SizedBox(width: 8),
+                      Expanded(child: Text('Yolculuğun sürüyor — takibe dön',
+                        style: TextStyle(color: FerxgoColors.brand, fontSize: 13, fontWeight: FontWeight.w800))),
+                      Icon(Icons.chevron_right, color: FerxgoColors.brand, size: 20),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),

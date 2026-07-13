@@ -1017,14 +1017,29 @@ class _Accepted extends StatelessWidget {
     final arrived = status.arrivedAt != null;
     final started = status.isStarted; // eşleşme kodu doğrulandı → yolculuk başladı
 
-    // Sürücü → buluşma noktası ETA (canlı konumdan hesaplanır)
+    // Hedef: başladıysa VARIŞ noktası, değilse BULUŞMA noktası. ETA canlı konumdan.
     final pickup = status.pickupPosition;
+    final dropoff = status.dropoffPosition;
+    final target = started ? (dropoff ?? pickup) : pickup;
+    const dist = Distance();
     int? etaMin;
-    double? distKm;
-    if (pickup != null) {
-      distKm = const Distance().as(LengthUnit.Kilometer, driver.position, pickup);
+    double? distKm; // hedefe kalan mesafe
+    if (target != null) {
+      distKm = dist.as(LengthUnit.Kilometer, driver.position, target);
       final raw = (distKm * 2.2 + 0.5).round();
       etaMin = raw < 1 ? 1 : raw;
+    }
+
+    // İlerleme yüzdesi (yolculuk başladıysa): kat edilen / toplam
+    double? progress;
+    if (started && dropoff != null && distKm != null) {
+      final total = (status.tripDistanceKm != null && status.tripDistanceKm! > 0)
+          ? status.tripDistanceKm!
+          : dist.as(LengthUnit.Kilometer, pickup ?? driver.position, dropoff);
+      if (total > 0) {
+        final covered = (total - distKm).clamp(0.0, total);
+        progress = (covered / total).clamp(0.0, 1.0);
+      }
     }
 
     // Durum şeridi: renk + başlık + alt yazı
@@ -1066,26 +1081,48 @@ class _Accepted extends StatelessWidget {
               userAgentPackageName: 'com.ferxgo',
               maxZoom: 19,
             ),
+            // Rota çizgisi: buluşma → varış (yolculuk başlayınca belirginleşir)
+            if (pickup != null && dropoff != null)
+              PolylineLayer(polylines: [
+                Polyline(
+                  points: [pickup, dropoff],
+                  strokeWidth: started ? 5 : 3,
+                  color: (started ? FerxgoColors.brand : FerxgoColors.textLow)
+                      .withValues(alpha: started ? 0.9 : 0.4),
+                  borderStrokeWidth: 1,
+                  borderColor: Colors.black26,
+                ),
+              ]),
             MarkerLayer(markers: [
               if (pickup != null)
                 Marker(
                   point: pickup,
                   width: 40, height: 40,
-                  child: const Icon(Icons.person_pin_circle, color: FerxgoColors.danger, size: 34),
+                  child: Icon(started ? Icons.trip_origin : Icons.person_pin_circle,
+                    color: started ? FerxgoColors.textMid : FerxgoColors.danger, size: started ? 22 : 34),
+                ),
+              // Varış noktası
+              if (dropoff != null)
+                Marker(
+                  point: dropoff,
+                  width: 40, height: 40,
+                  child: const Icon(Icons.place, color: FerxgoColors.danger, size: 34),
                 ),
               // Sürücünün canlı konumu — üstünde ismi (web pin'i gibi)
               Marker(
                 point: driver.position,
                 width: 140, height: 62,
-                child: _DriverMapMarker(name: driver.name, etaMin: arrived ? null : etaMin),
+                child: _DriverMapMarker(name: driver.name, etaMin: etaMin),
               ),
             ]),
           ],
         ),
-        // Üst durum şeridi — belirgin, renkli
+        // Üst şerit: yolculuk başladıysa canlı ilerleme kartı, değilse durum şeridi
         Positioned(
           top: 12, left: 12, right: 12,
-          child: _StatusStrip(color: stColor, title: stTitle, subtitle: stSub, icon: stIcon),
+          child: started
+              ? _ProgressStrip(etaMin: etaMin, remainingKm: distKm, progress: progress)
+              : _StatusStrip(color: stColor, title: stTitle, subtitle: stSub, icon: stIcon),
         ),
         // Acil yardım (panik) butonu — durum şeridinin altında sağda
         Positioned(
@@ -1294,6 +1331,144 @@ class _RideInfoRow extends StatelessWidget {
           ],
         ),
       );
+}
+
+/// Yolculuk başladıktan sonra üstte canlı ilerleme kartı:
+/// pulsing 🚗 + "X dk kaldı" + kalan km + amber→yeşil gradient ilerleme çubuğu.
+class _ProgressStrip extends StatefulWidget {
+  const _ProgressStrip({required this.etaMin, required this.remainingKm, required this.progress});
+  final int? etaMin;
+  final double? remainingKm;
+  final double? progress; // 0..1
+
+  @override
+  State<_ProgressStrip> createState() => _ProgressStripState();
+}
+
+class _ProgressStripState extends State<_ProgressStrip> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eta = widget.etaMin;
+    final km = widget.remainingKm;
+    final pct = ((widget.progress ?? 0) * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [FerxgoColors.brand.withValues(alpha: 0.22), FerxgoColors.inkSoft.withValues(alpha: 0.96)],
+          begin: Alignment.centerLeft, end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.4)),
+        boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 12, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Pulsing araç ikonu
+              SizedBox(
+                width: 48, height: 48,
+                child: AnimatedBuilder(
+                  animation: _pulse,
+                  builder: (_, child) {
+                    final t = _pulse.value;
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 30 + 18 * t, height: 30 + 18 * t,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: FerxgoColors.brand.withValues(alpha: (1 - t) * 0.35),
+                          ),
+                        ),
+                        child!,
+                      ],
+                    );
+                  },
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: FerxgoColors.brand.withValues(alpha: 0.20),
+                      border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.6), width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text('🚗', style: TextStyle(fontSize: 20)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('HEDEFE DOĞRU',
+                      style: TextStyle(color: FerxgoColors.brand, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                    const SizedBox(height: 2),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(eta != null ? '$eta' : '—',
+                          style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 28, fontWeight: FontWeight.w900, height: 1)),
+                        const SizedBox(width: 5),
+                        const Text('dk kaldı', style: TextStyle(color: FerxgoColors.textMid, fontSize: 13)),
+                        const Spacer(),
+                        if (km != null)
+                          Text('${km.toStringAsFixed(1)} km',
+                            style: const TextStyle(color: FerxgoColors.brand, fontSize: 14, fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Gradient ilerleme çubuğu (amber → yeşil)
+          Stack(
+            children: [
+              Container(
+                height: 7,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              LayoutBuilder(
+                builder: (_, c) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeOut,
+                  height: 7,
+                  width: c.maxWidth * (widget.progress ?? 0).clamp(0.0, 1.0),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [FerxgoColors.brand, FerxgoColors.success]),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('Yolculuğun %$pct tamamlandı',
+            style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
+        ],
+      ),
+    );
+  }
 }
 
 class _StatusStrip extends StatelessWidget {

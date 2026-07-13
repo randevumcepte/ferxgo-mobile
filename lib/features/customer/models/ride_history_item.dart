@@ -6,6 +6,8 @@ import '../../../core/util/json_num.dart';
 class RideHistoryItem {
   const RideHistoryItem({
     required this.publicId,
+    required this.requestPublicId,
+    required this.isActive,
     required this.status,
     required this.pickupAddress,
     required this.dropoffAddress,
@@ -20,6 +22,13 @@ class RideHistoryItem {
   });
 
   final String publicId;
+
+  /// Devam eden yolculuğa geri dönmek için ride_request public_id (takip ekranı).
+  final String? requestPublicId;
+
+  /// Yolculuk hâlâ sürüyor mu (terminal değil) → tıklayınca takip ekranı açılır.
+  final bool isActive;
+
   final String status;
   final String pickupAddress;
   final String dropoffAddress;
@@ -63,6 +72,8 @@ class RideHistoryItem {
   static RideHistoryItem fromJson(Map<String, dynamic> json) {
     return RideHistoryItem(
       publicId: json['public_id'] as String,
+      requestPublicId: json['request_public_id'] as String?,
+      isActive: (json['is_active'] as bool?) ?? false,
       status: json['status'] as String? ?? 'pending',
       pickupAddress: json['pickup_address'] as String? ?? '',
       dropoffAddress: json['dropoff_address'] as String? ?? '',
