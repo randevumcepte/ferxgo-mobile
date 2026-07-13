@@ -853,7 +853,6 @@ class _Accepted extends StatelessWidget {
     final driver = status.acceptedDriver!;
     final arrived = status.arrivedAt != null;
     final started = status.isStarted; // eşleşme kodu doğrulandı → yolculuk başladı
-    final confirmed = status.customerConfirmedAt != null;
 
     // Sürücü → buluşma noktası ETA (canlı konumdan hesaplanır)
     final pickup = status.pickupPosition;
@@ -966,9 +965,6 @@ class _Accepted extends StatelessWidget {
                   child: chatOpen
                       ? _ChatPanel(scroll: msgScroll, messages: messages)
                       : _ActionsPanel(
-                          arrived: arrived,
-                          confirmed: confirmed,
-                          onConfirm: onConfirm,
                           onCancel: onCancel,
                           scroll: sc,
                           busy: busyAction,
@@ -1283,16 +1279,10 @@ class _RoundBtn extends StatelessWidget {
 
 class _ActionsPanel extends StatelessWidget {
   const _ActionsPanel({
-    required this.arrived,
-    required this.confirmed,
-    required this.onConfirm,
     required this.onCancel,
     required this.scroll,
     required this.busy,
   });
-  final bool arrived;
-  final bool confirmed;
-  final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
   final ScrollController scroll;
   final bool busy;
@@ -1303,29 +1293,8 @@ class _ActionsPanel extends StatelessWidget {
       controller: scroll,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
       children: [
-        if (arrived && !confirmed)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: FilledButton.icon(
-              onPressed: onConfirm,
-              icon: const Icon(Icons.check_circle),
-              label: const Text('Sürücüyü gördüm'),
-              style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-            ),
-          )
-        else if (confirmed)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                Icon(Icons.check, color: FerxgoColors.success),
-                SizedBox(width: 8),
-                Text('Buluştun, yolculuk başladı.', style: TextStyle(color: FerxgoColors.textMid)),
-              ],
-            ),
-          ),
         OutlinedButton.icon(
-          onPressed: confirmed || busy ? null : onCancel,
+          onPressed: busy ? null : onCancel,
           icon: const Icon(Icons.close),
           label: const Text('Talebi iptal et'),
           style: OutlinedButton.styleFrom(
