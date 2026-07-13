@@ -1059,13 +1059,16 @@ class _ActiveActions extends StatelessWidget {
           ),
         ],
 
-        // Kaçış: takılan / iptal gereken yolculuğu kapat (her durumda)
-        const SizedBox(height: 6),
-        TextButton.icon(
-          onPressed: busy ? null : onCancelRide,
-          icon: const Icon(Icons.close, color: FerxgoColors.danger, size: 18),
-          label: const Text('Yolculuğu iptal et', style: TextStyle(color: FerxgoColors.danger)),
-        ),
+        // Kaçış: yolculuk BAŞLAMADAN önce takılan/iptal gereken talebi kapat.
+        // Başladıktan sonra iptal yok — yalnızca "Tamamla".
+        if (!active.started) ...[
+          const SizedBox(height: 6),
+          TextButton.icon(
+            onPressed: busy ? null : onCancelRide,
+            icon: const Icon(Icons.close, color: FerxgoColors.danger, size: 18),
+            label: const Text('Yolculuğu iptal et', style: TextStyle(color: FerxgoColors.danger)),
+          ),
+        ],
       ],
     );
   }

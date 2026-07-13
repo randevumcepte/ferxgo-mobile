@@ -44,6 +44,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
   RideStatus? _status;
   String? _error;
   bool _busyAction = false;
+  bool _visualVerifyShown = false; // araç/sürücü doğrulama modalı bir kez açılsın
 
   // Sohbet
   final TextEditingController _msgCtrl = TextEditingController();
@@ -91,12 +92,170 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
         _pollMessages();
         _messageTimer = Timer.periodic(AppConfig.ridePollInterval, (_) => _pollMessages());
       }
-      // NOT: "Bindiğiniz araç bu mu?" görsel doğrulama kaldırıldı — eşleşme kodu
-      // (sürücü yolcunun 4 haneli kodunu girer) artık doğrulamayı sağlıyor.
+      // Yolculuk başladıktan sonra araç/sürücü görsel doğrulaması (bir kez)
+      if (s.needsVisualVerify && !_visualVerifyShown) {
+        _visualVerifyShown = true;
+        _showVisualVerify(s);
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
     } catch (_) {}
+  }
+
+  /// Yolculuk başladıktan sonra "bindiğim araç/sürücü doğru mu?" doğrulaması.
+  Future<void> _showVisualVerify(RideStatus s) async {
+    final drv = s.acceptedDriver;
+    if (drv == null || !mounted) {
+      _visualVerifyShown = false;
+      return;
+    }
+
+    final match = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: FerxgoColors.inkSoft,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.verified_user, color: FerxgoColors.brand, size: 22),
+            SizedBox(width: 8),
+            Expanded(child: Text('Bindiğin araç bu mu?',
+              style: TextStyle(color: FerxgoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w800))),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: FerxgoColors.inkMuted,
+                    backgroundImage: (drv.avatar != null && drv.avatar!.isNotEmpty) ? NetworkImage(drv.avatar!) : null,
+                    child: (drv.avatar == null || drv.avatar!.isEmpty)
+                        ? const Icon(Icons.person, color: FerxgoColors.textMid) : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(drv.name,
+                          style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w800, fontSize: 16)),
+                        if (drv.vehicleLabel != null && drv.vehicleLabel!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(drv.vehicleLabel!,
+                              style: const TextStyle(color: FerxgoColors.textMid, fontSize: 13)),
+                          ),
+                        if (drv.plate != null && drv.plate!.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(top: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: FerxgoColors.brand.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: FerxgoColors.brand),
+                            ),
+                            child: Text(drv.plate!,
+                              style: const TextStyle(color: FerxgoColors.brand, fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 15)),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (drv.vehiclePhotos.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text('Araç fotoğrafları', style: TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 90,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: drv.vehiclePhotos.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) => ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        drv.vehiclePhotos[i],
+                        width: 124, height: 90, fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 124, height: 90, color: FerxgoColors.inkMuted,
+                          child: const Icon(Icons.directions_car, color: FerxgoColors.textLow),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              const Text('Araçtaki plaka ve fotoğraflarla karşılaştır. Güvenliğin için önemli.',
+                style: TextStyle(color: FerxgoColors.textLow, fontSize: 12, height: 1.4)),
+            ],
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        actions: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: FerxgoColors.success, foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Evet, doğru', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Hayır, eşleşmiyor — bildir',
+                    style: TextStyle(color: FerxgoColors.danger, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (match == null) {
+      _visualVerifyShown = false;
+      return;
+    }
+    await _submitVisualVerify(match);
+  }
+
+  Future<void> _submitVisualVerify(bool match) async {
+    try {
+      final res = await ref.read(customerRideRepositoryProvider).visualVerify(widget.publicId, match);
+      if (!mounted) return;
+      final msg = (res['message'] as String?) ?? (match ? 'İyi yolculuklar!' : 'Bildirimin alındı.');
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(
+          content: Text(msg),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: match ? FerxgoColors.success : FerxgoColors.danger,
+        ));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _visualVerifyShown = false; // hata → tekrar denenebilsin
+      });
+    }
   }
 
   Future<void> _pollMessages() async {
@@ -968,6 +1127,7 @@ class _Accepted extends StatelessWidget {
                           onCancel: onCancel,
                           scroll: sc,
                           busy: busyAction,
+                          started: started,
                         ),
                 ),
 
@@ -1282,10 +1442,12 @@ class _ActionsPanel extends StatelessWidget {
     required this.onCancel,
     required this.scroll,
     required this.busy,
+    required this.started,
   });
   final VoidCallback? onCancel;
   final ScrollController scroll;
   final bool busy;
+  final bool started;
 
   @override
   Widget build(BuildContext context) {
@@ -1293,16 +1455,30 @@ class _ActionsPanel extends StatelessWidget {
       controller: scroll,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
       children: [
-        OutlinedButton.icon(
-          onPressed: busy ? null : onCancel,
-          icon: const Icon(Icons.close),
-          label: const Text('Talebi iptal et'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: FerxgoColors.danger,
-            side: const BorderSide(color: FerxgoColors.danger),
-            minimumSize: const Size(double.infinity, 50),
+        // Yolculuk başladıysa iptal yok — sadece "sürüyor" bilgisi.
+        if (started)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Icon(Icons.navigation, color: FerxgoColors.success, size: 20),
+                SizedBox(width: 8),
+                Expanded(child: Text('Yolculuk sürüyor. İyi yolculuklar!',
+                  style: TextStyle(color: FerxgoColors.textMid, fontSize: 13))),
+              ],
+            ),
+          )
+        else
+          OutlinedButton.icon(
+            onPressed: busy ? null : onCancel,
+            icon: const Icon(Icons.close),
+            label: const Text('Talebi iptal et'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: FerxgoColors.danger,
+              side: const BorderSide(color: FerxgoColors.danger),
+              minimumSize: const Size(double.infinity, 50),
+            ),
           ),
-        ),
       ],
     );
   }
