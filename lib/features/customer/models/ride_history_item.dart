@@ -36,6 +36,30 @@ class RideHistoryItem {
   bool get isCancelled => status == 'cancelled';
   bool get isNoShow    => status == 'no_show';
 
+  /// Ham statü kodunu (driver_arriving, in_progress vb.) Türkçe etikete çevirir.
+  String get statusLabel {
+    switch (status) {
+      case 'completed':        return 'Tamamlandı';
+      case 'cancelled':        return 'İptal edildi';
+      case 'no_show':          return 'Gelinmedi';
+      case 'in_progress':      return 'Devam ediyor';
+      case 'driver_arriving':  return 'Sürücü yolda';
+      case 'assigned':         return 'Sürücü atandı';
+      case 'searching':        return 'Sürücü aranıyor';
+      case 'pending':          return 'Bekliyor';
+      case 'draft':            return 'Taslak';
+      case 'reservation_pending_pool':
+      case 'reservation_accepted':
+      case 'reservation_reconfirm_requested':
+      case 'reservation_confirmed':
+      case 'reservation_imminent':
+        return 'Rezervasyon';
+      case 'reservation_unmatched':
+        return 'Eşleşme bulunamadı';
+      default:                 return 'Yolculuk';
+    }
+  }
+
   static RideHistoryItem fromJson(Map<String, dynamic> json) {
     return RideHistoryItem(
       publicId: json['public_id'] as String,

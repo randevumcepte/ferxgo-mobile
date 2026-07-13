@@ -82,12 +82,7 @@ class _RideTile extends StatelessWidget {
     return FerxgoColors.info;
   }
 
-  String get _statusLabel {
-    if (item.isCompleted) return 'Tamamlandı';
-    if (item.isCancelled) return 'İptal';
-    if (item.isNoShow)    return 'Gelinmedi';
-    return item.status;
-  }
+  String get _statusLabel => item.statusLabel;
 
   @override
   Widget build(BuildContext context) {
