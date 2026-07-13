@@ -110,52 +110,6 @@ class PaymentScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // ── Ödeme yöntemi ─────────────────────────────────────────────
-            const _SectionLabel('Yolculuk Ödeme Yöntemi'),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              decoration: BoxDecoration(
-                color: FerxgoColors.inkSoft,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: FerxgoColors.success.withValues(alpha: 0.5)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(
-                      color: FerxgoColors.success.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.account_balance_wallet_outlined, color: FerxgoColors.success, size: 22),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Nakit / Banka Havalesi',
-                          style: TextStyle(color: FerxgoColors.textHigh, fontSize: 15, fontWeight: FontWeight.w700)),
-                        SizedBox(height: 2),
-                        Text('Yolculuk sonunda sürücüye ödenir',
-                          style: TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: FerxgoColors.success.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text('Aktif',
-                      style: TextStyle(color: FerxgoColors.success, fontSize: 11, fontWeight: FontWeight.w800)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
             // ── Ceza için kayıtlı kart ────────────────────────────────────
             const _SectionLabel('Ceza İçin Kayıtlı Kart'),
             Container(
