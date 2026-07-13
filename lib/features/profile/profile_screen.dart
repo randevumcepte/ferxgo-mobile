@@ -9,6 +9,7 @@ import '../../core/routing/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/auth_repository.dart';
 import '../driver/driver_repository.dart';
+import '../payment/payment_screen.dart';
 import 'account_screens.dart';
 
 /// Profil / hesabım — her iki rol için.
@@ -233,7 +234,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _QuickAction(
                   icon: Icons.account_balance_wallet_outlined,
                   label: 'Ödeme',
-                  onTap: () => _soon('Cüzdan ve ödeme yakında.'),
+                  onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const PaymentScreen())),
                 ),
                 const SizedBox(width: 12),
                 _QuickAction(
