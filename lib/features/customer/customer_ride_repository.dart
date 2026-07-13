@@ -78,15 +78,41 @@ class CustomerRideRepository {
     return (res['favorited'] as bool?) ?? false;
   }
 
-  // ─── Yer arama (Nominatim proxy) ──────────────────────────
-  Future<List<Place>> searchPlaces(String q) async {
+  // ─── Yer arama (Yandex Geosuggest → Photon → Nominatim proxy) ──
+  Future<List<PlaceSuggestion>> searchPlaces(String q) async {
     final trimmed = q.trim();
     if (trimmed.length < 2) return const [];
     final res = await _api.getJson('/customer/places/search', query: {'q': trimmed});
     return (res['results'] as List? ?? const [])
         .whereType<Map>()
-        .map((m) => Place.fromJson(Map<String, dynamic>.from(m)))
+        .map((m) => PlaceSuggestion.fromJson(Map<String, dynamic>.from(m)))
         .toList(growable: false);
+  }
+
+  /// Seçilen önerinin koordinatını çöz.
+  /// Yandex önerisi için [PlaceSuggestion.uri], koordinatı zaten olan öneriler
+  /// için resolve gerekmez (bu metod çağrılmadan doğrudan Place'e çevrilir).
+  /// Çözülemezse null döner.
+  Future<Place?> resolvePlace(PlaceSuggestion s) async {
+    // Zaten koordinatı varsa (Photon/Nominatim) doğrudan Place.
+    if (s.position != null) {
+      return Place(position: s.position!, displayName: s.displayName);
+    }
+    final query = <String, String>{};
+    if (s.uri != null) query['uri'] = s.uri!;
+    // uri yoksa/başarısızsa metinle geocode için display_name yedeği.
+    if (s.displayName.isNotEmpty) query['text'] = s.displayName;
+    if (query.isEmpty) return null;
+
+    final res = await _api.getJson('/customer/places/resolve', query: query);
+    final lat = res['lat'] as num?;
+    final lon = res['lon'] as num?;
+    if (lat == null || lon == null) return null;
+    final name = res['display_name'] as String?;
+    return Place(
+      position: LatLng(lat.toDouble(), lon.toDouble()),
+      displayName: (name != null && name.isNotEmpty) ? name : s.displayName,
+    );
   }
 
   // ─── Fiyat hesabı ─────────────────────────────────────────
