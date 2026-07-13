@@ -25,6 +25,13 @@ class RideStatus {
     required this.customerReconfirmedAt,
     required this.pickupPosition,
     required this.pickupAddress,
+    this.dropoffPosition,
+    this.dropoffAddress,
+    this.tripDistanceKm,
+    this.matchCode,
+    this.startedAt,
+    this.visualVerifiedAt,
+    this.visualVerifyFailedAt,
   });
 
   /// pending | pool_expanded | awaiting_customer_reconfirm | accepted | expired | cancelled | exhausted
@@ -45,10 +52,34 @@ class RideStatus {
   final LatLng? pickupPosition;
   final String? pickupAddress;
 
+  /// Varış noktası + toplam yolculuk mesafesi — ilerleme takibi için
+  final LatLng? dropoffPosition;
+  final String? dropoffAddress;
+  final double? tripDistanceKm;
+
+  /// Eşleşme kodu — yolcuya gösterilir, sürücü buluşmada girer (yolculuk başlar).
+  /// Yolculuk başlayınca backend null döndürür.
+  final String? matchCode;
+
+  /// Yolculuk başladı mı (eşleşme kodu doğrulandıktan sonra dolar)
+  bool get isStarted => startedAt != null;
+
   /// Auto ("Hadi Gidelim") dağıtımı — favori dalgası mı, yakın havuz mu
   final bool isFavoriteWave;
   final DateTime? reconfirmRequiredAt;
   final DateTime? customerReconfirmedAt;
+
+  /// Faz 6 — görsel doğrulama (yolculuk başladıktan sonra)
+  final DateTime? startedAt;
+  final DateTime? visualVerifiedAt;
+  final DateTime? visualVerifyFailedAt;
+
+  /// Yolculuk başladı ve müşteri henüz araç/sürücü görsel doğrulamasını yapmadı.
+  bool get needsVisualVerify =>
+      (isAccepted || status == 'in_progress') &&
+      startedAt != null &&
+      visualVerifiedAt == null &&
+      visualVerifyFailedAt == null;
 
   bool get isPending   => status == 'pending';
   bool get isAccepted  => status == 'accepted';
@@ -98,6 +129,13 @@ class RideStatus {
       customerReconfirmedAt: _parseDate(json['customer_reconfirmed_at']),
       pickupPosition: _parseLatLng(json['pickup_lat'], json['pickup_lng']),
       pickupAddress: json['pickup_address'] as String?,
+      dropoffPosition: _parseLatLng(json['dropoff_lat'], json['dropoff_lng']),
+      dropoffAddress: json['dropoff_address'] as String?,
+      tripDistanceKm: (json['trip_distance_km'] as num?)?.toDouble(),
+      matchCode: json['match_code'] as String?,
+      startedAt: _parseDate(json['started_at']),
+      visualVerifiedAt: _parseDate(json['visual_verified_at']),
+      visualVerifyFailedAt: _parseDate(json['visual_verify_failed_at']),
     );
   }
 

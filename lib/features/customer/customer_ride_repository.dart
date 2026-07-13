@@ -78,40 +78,31 @@ class CustomerRideRepository {
     return (res['favorited'] as bool?) ?? false;
   }
 
-  // ─── Yer arama (Yandex Geosuggest → Photon → Nominatim proxy) ──
-  Future<List<PlaceSuggestion>> searchPlaces(String q) async {
+  // ─── Yer arama (GeoService: Yandex/Photon/Nominatim) ──────
+  Future<List<Place>> searchPlaces(String q) async {
     final trimmed = q.trim();
     if (trimmed.length < 2) return const [];
     final res = await _api.getJson('/customer/places/search', query: {'q': trimmed});
     return (res['results'] as List? ?? const [])
         .whereType<Map>()
-        .map((m) => PlaceSuggestion.fromJson(Map<String, dynamic>.from(m)))
+        .map((m) => Place.fromJson(Map<String, dynamic>.from(m)))
         .toList(growable: false);
   }
 
-  /// Seçilen önerinin koordinatını çöz.
-  /// Yandex önerisi için [PlaceSuggestion.uri], koordinatı zaten olan öneriler
-  /// için resolve gerekmez (bu metod çağrılmadan doğrudan Place'e çevrilir).
-  /// Çözülemezse null döner.
-  Future<Place?> resolvePlace(PlaceSuggestion s) async {
-    // Zaten koordinatı varsa (Photon/Nominatim) doğrudan Place.
-    if (s.position != null) {
-      return Place(position: s.position!, displayName: s.displayName);
-    }
-    final query = <String, String>{};
-    if (s.uri != null) query['uri'] = s.uri!;
-    // uri yoksa/başarısızsa metinle geocode için display_name yedeği.
-    if (s.displayName.isNotEmpty) query['text'] = s.displayName;
-    if (query.isEmpty) return null;
-
-    final res = await _api.getJson('/customer/places/resolve', query: query);
-    final lat = res['lat'] as num?;
-    final lon = res['lon'] as num?;
+  /// Koordinatsız (Yandex) öneriyi seçince gerçek konumu çöz.
+  /// [uri] Yandex önerisinin uri'si; yoksa [text] ile metinden çözülür.
+  Future<Place?> resolvePlace({String? uri, String? text}) async {
+    final res = await _api.getJson('/customer/places/resolve', query: {
+      if (uri != null && uri.isNotEmpty) 'uri': uri,
+      if (text != null && text.isNotEmpty) 'text': text,
+    });
+    final lat = (res['lat'] as num?)?.toDouble();
+    final lon = (res['lon'] as num?)?.toDouble();
     if (lat == null || lon == null) return null;
-    final name = res['display_name'] as String?;
     return Place(
-      position: LatLng(lat.toDouble(), lon.toDouble()),
-      displayName: (name != null && name.isNotEmpty) ? name : s.displayName,
+      position: LatLng(lat, lon),
+      displayName: res['display_name'] as String? ?? (text ?? ''),
+      hasCoords: true,
     );
   }
 
@@ -194,6 +185,16 @@ class CustomerRideRepository {
 
   Future<Map<String, dynamic>> confirmRequest(String publicId) async {
     return _api.postJson('/customer/ride-requests/$publicId/confirm');
+  }
+
+  /// Faz 6 — görsel doğrulama: yolculuk başladıktan sonra müşteri
+  /// "araç/sürücü doğru mu?" cevabı verir. match=false → güvenlik olayı açılır.
+  /// Dönen map: { ok, verified, message, incident_id?, status }.
+  Future<Map<String, dynamic>> visualVerify(String publicId, bool match, {String? note}) async {
+    return _api.postJson('/customer/ride-requests/$publicId/visual-verify', body: {
+      'match': match,
+      if (note != null && note.isNotEmpty) 'note': note,
+    });
   }
 
   // ─── Fiyat pazarlığı ──────────────────────────────────────

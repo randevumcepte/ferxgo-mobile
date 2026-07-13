@@ -32,6 +32,12 @@ class DriverRepository {
     return (res['women_only'] as bool?) ?? enabled;
   }
 
+  /// Görünürlük/hizmet çapı (km, 2..20). Backend 0.5 adımına yuvarlar.
+  Future<double> setServiceRadius(double radiusKm) async {
+    final res = await _api.postJson('/driver/service-radius', body: {'radius_km': radiusKm});
+    return (res['service_radius_km'] as num?)?.toDouble() ?? radiusKm;
+  }
+
   /// Periyodik konum güncellemesi (online iken, ~20-30 sn'de bir).
   Future<void> updateLocation(double lat, double lng) async {
     await _api.postJson('/driver/location', body: {'lat': lat, 'lng': lng});
@@ -55,6 +61,12 @@ class DriverRepository {
     await _api.postJson('/driver/active/arrived');
   }
 
+  /// Yolcunun gösterdiği 4 haneli eşleşme kodunu gir → yolculuğu başlat.
+  /// Kod hatalıysa ApiException (422) fırlar.
+  Future<void> startWithCode(String code) async {
+    await _api.postJson('/driver/active/start-code', body: {'code': code});
+  }
+
   Future<void> reportNoShow({double? lat, double? lng, String? note}) async {
     await _api.postJson('/driver/active/no-show', body: {
       'lat': ?lat,
@@ -65,6 +77,11 @@ class DriverRepository {
 
   Future<void> completeRide() async {
     await _api.postJson('/driver/active/complete');
+  }
+
+  /// Aktif yolculuğu iptal et / takılan durumu kapat → sürücü tekrar online.
+  Future<void> cancelActive() async {
+    await _api.postJson('/driver/active/cancel');
   }
 
   Future<RideMessage> sendMessage(String body) async {

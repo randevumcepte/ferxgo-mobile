@@ -40,12 +40,10 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   Timer? _searchDebounce;
-  List<PlaceSuggestion> _searchResults = const [];
+  List<Place> _searchResults = const [];
   bool _searchBusy = false;
+  bool _resolvingDropoff = false; // Yandex önerisinin koordinatı çözülürken
   String? _searchError;
-
-  /// Bir öneri seçildiğinde koordinat çözülürken (Yandex resolve) — çift dokunmayı engelle.
-  bool _resolving = false;
 
   /// Kutuda ≥2 karakter varsa liste alanında sürücü yerine sonuçlar gösterilir.
   bool get _showResults => _searchCtrl.text.trim().length >= 2;
@@ -125,21 +123,29 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
     }
   }
 
-  Future<void> _pickDropoff(PlaceSuggestion s) async {
-    if (_resolving) return;
-    // Koordinatı çöz (Yandex önerisi koordinatsız gelir → resolve; diğerleri anında döner).
-    setState(() { _resolving = true; _searchError = null; });
-    Place? dropoff;
-    try {
-      dropoff = await ref.read(customerRideRepositoryProvider).resolvePlace(s);
-    } catch (_) {
-      dropoff = null;
-    }
-    if (!mounted) return;
-    setState(() => _resolving = false);
-    if (dropoff == null) {
-      setState(() => _searchError = 'Bu konumun koordinatı alınamadı, başka bir sonuç dene.');
-      return;
+  Future<void> _pickDropoff(Place p) async {
+    if (_resolvingDropoff) return;
+    FocusScope.of(context).unfocus();
+
+    Place dropoff = p;
+    // Yandex önerisi koordinatsız gelir → gerçek konumu çöz.
+    if (!p.hasCoords) {
+      setState(() { _resolvingDropoff = true; _searchError = null; });
+      try {
+        final resolved = await ref.read(customerRideRepositoryProvider)
+            .resolvePlace(uri: p.uri, text: p.displayName);
+        if (!mounted) return;
+        if (resolved == null) {
+          setState(() { _resolvingDropoff = false; _searchError = 'Bu konumun koordinatı alınamadı, başka bir sonuç dene.'; });
+          return;
+        }
+        // Güzel görünen ismi koru, koordinatı al
+        dropoff = Place(position: resolved.position, displayName: p.displayName, hasCoords: true);
+      } catch (_) {
+        if (mounted) setState(() { _resolvingDropoff = false; _searchError = 'Konum alınamadı, ağını kontrol et.'; });
+        return;
+      }
+      if (mounted) setState(() => _resolvingDropoff = false);
     }
 
     // Pickup'ı garantiye al (adres varsa onunla)
@@ -147,9 +153,8 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       Place(position: _center, displayName: _pickupAddress ?? 'Mevcut konumum'),
     );
     ref.read(bookingDraftProvider.notifier).setDropoff(dropoff);
-    FocusScope.of(context).unfocus();
     _searchCtrl.clear();
-    context.push(AppRoutes.customerBookConfirm);
+    if (mounted) context.push(AppRoutes.customerBookConfirm);
   }
 
   Future<void> _loadDrivers() async {
@@ -444,6 +449,18 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   }
 
   Widget _buildSearchResults() {
+    if (_resolvingDropoff) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: FerxgoColors.brand),
+            SizedBox(height: 12),
+            Text('Konum alınıyor…', style: TextStyle(color: FerxgoColors.textMid)),
+          ],
+        ),
+      );
+    }
     if (_searchError != null) {
       return Center(child: Padding(
         padding: const EdgeInsets.all(20),
@@ -467,7 +484,6 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
       itemCount: _searchResults.length,
       separatorBuilder: (_, _) => const Divider(height: 1, color: FerxgoColors.line),
       itemBuilder: (_, i) => ListTile(
-        enabled: !_resolving,
         leading: const Icon(Icons.place, color: FerxgoColors.brand),
         title: Text(_searchResults[i].shortName,
           maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -479,12 +495,6 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                 maxLines: 2, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12),
               ),
-        trailing: _resolving
-            ? const SizedBox(
-                width: 18, height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: FerxgoColors.brand),
-              )
-            : null,
         onTap: () => _pickDropoff(_searchResults[i]),
       ),
     );

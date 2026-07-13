@@ -54,6 +54,7 @@ class DriverInfo {
     required this.totalRides,
     required this.isFemale,
     required this.womenOnly,
+    required this.serviceRadiusKm,
   });
 
   final int id;
@@ -64,6 +65,9 @@ class DriverInfo {
   final bool isFemale;
   final bool womenOnly;
 
+  /// Sürücünün görünürlük/hizmet çapı (km) — 2..20 arası.
+  final double serviceRadiusKm;
+
   static DriverInfo fromJson(Map<String, dynamic> json) => DriverInfo(
         id: asIntOr(json['id'], 0),
         name: (json['name'] as String?) ?? 'Sürücü',
@@ -72,6 +76,7 @@ class DriverInfo {
         totalRides: asIntOr(json['total_rides'], 0),
         isFemale: (json['is_female'] as bool?) ?? false,
         womenOnly: (json['women_only'] as bool?) ?? false,
+        serviceRadiusKm: asDoubleOr(json['service_radius_km'], 5),
       );
 }
 
@@ -145,6 +150,8 @@ class DriverActive {
     required this.noShowButtonReady,
     required this.noShowCountdownSec,
     required this.rideStatus,
+    required this.needsStartCode,
+    required this.startedAt,
   });
 
   final String publicId;
@@ -166,8 +173,13 @@ class DriverActive {
   final int? noShowCountdownSec;
   final String? rideStatus;
 
+  /// Eşleşme kodu akışı — kod yolcuda; sürücü girerek yolculuğu başlatır.
+  final bool needsStartCode;
+  final DateTime? startedAt;
+
   bool get arrived => arrivedAt != null;
   bool get confirmed => customerConfirmedAt != null;
+  bool get started => startedAt != null;
 
   static DriverActive fromJson(Map<String, dynamic> json) {
     DateTime? d(Object? v) => v is String ? DateTime.tryParse(v) : null;
@@ -193,6 +205,8 @@ class DriverActive {
       noShowButtonReady: (json['no_show_button_ready'] as bool?) ?? false,
       noShowCountdownSec: asIntOrNull(json['no_show_countdown_sec']),
       rideStatus: json['ride_status'] as String?,
+      needsStartCode: (json['needs_start_code'] as bool?) ?? false,
+      startedAt: d(json['started_at']),
     );
   }
 }

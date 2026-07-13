@@ -1,37 +1,22 @@
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
-/// Koordinatı kesinleşmiş yer — booking draft'ta pickup/dropoff olarak taşınır.
+/// Yer arama (GeoService: Yandex/Photon/Nominatim) sonucu.
+/// Yandex önerileri KOORDİNATSIZ gelir (uri dolu) → seçilince /places/resolve
+/// ile koordinat alınır. [hasCoords] false ise position (0,0) placeholder'dır.
 @immutable
 class Place {
-  const Place({required this.position, required this.displayName});
+  const Place({
+    required this.position,
+    required this.displayName,
+    this.uri,
+    this.hasCoords = true,
+  });
 
   final LatLng position;
   final String displayName;
-}
-
-/// Yer arama (autocomplete) önerisi — GeoService sözleşmesi.
-///
-/// Öğe şekli: { display_name, lat|null, lon|null, uri|null, provider }.
-///  - Yandex önerileri koordinatsız gelir ([position] null, [uri] dolu) →
-///    seçilince /customer/places/resolve ile koordinat alınır.
-///  - Photon/Nominatim önerileri koordinatı zaten taşır ([position] dolu).
-@immutable
-class PlaceSuggestion {
-  const PlaceSuggestion({
-    required this.displayName,
-    this.position,
-    this.uri,
-    this.provider,
-  });
-
-  final String displayName;
-  final LatLng? position;
   final String? uri;
-  final String? provider;
-
-  /// Koordinat yok → seçilince resolve gerekir (Yandex önerisi).
-  bool get needsResolve => position == null;
+  final bool hasCoords;
 
   /// İlk virgüle kadar olan kısa ad (UI'da başlık).
   String get shortName {
@@ -45,18 +30,15 @@ class PlaceSuggestion {
     return i > 0 ? displayName.substring(i + 1).trim() : '';
   }
 
-  static PlaceSuggestion fromJson(Map<String, dynamic> json) {
-    final lat = json['lat'] as num?;
-    final lon = json['lon'] as num?;
-    final pos = (lat != null && lon != null)
-        ? LatLng(lat.toDouble(), lon.toDouble())
-        : null;
-    final uri = json['uri'] as String?;
-    return PlaceSuggestion(
+  static Place fromJson(Map<String, dynamic> json) {
+    final lat = (json['lat'] as num?)?.toDouble();
+    final lon = (json['lon'] as num?)?.toDouble();
+    final has = lat != null && lon != null;
+    return Place(
+      position: has ? LatLng(lat, lon) : const LatLng(0, 0),
       displayName: json['display_name'] as String? ?? '',
-      position: pos,
-      uri: (uri != null && uri.isNotEmpty) ? uri : null,
-      provider: json['provider'] as String?,
+      uri: json['uri'] as String?,
+      hasCoords: has,
     );
   }
 }

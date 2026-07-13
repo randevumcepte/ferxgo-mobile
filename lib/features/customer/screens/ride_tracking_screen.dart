@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/config/app_config.dart';
@@ -16,6 +15,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/negotiation.dart';
 import '../../../shared/widgets/error_banner.dart';
 import '../../../shared/widgets/price_stepper.dart';
+import '../../call/call_overlay.dart';
+import '../../safety/panic_button.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
 import '../models/place.dart';
@@ -44,6 +45,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
   RideStatus? _status;
   String? _error;
   bool _busyAction = false;
+  bool _visualVerifyShown = false; // araç/sürücü doğrulama modalı bir kez açılsın
 
   // Sohbet
   final TextEditingController _msgCtrl = TextEditingController();
@@ -91,10 +93,170 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
         _pollMessages();
         _messageTimer = Timer.periodic(AppConfig.ridePollInterval, (_) => _pollMessages());
       }
+      // Yolculuk başladıktan sonra araç/sürücü görsel doğrulaması (bir kez)
+      if (s.needsVisualVerify && !_visualVerifyShown) {
+        _visualVerifyShown = true;
+        _showVisualVerify(s);
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
     } catch (_) {}
+  }
+
+  /// Yolculuk başladıktan sonra "bindiğim araç/sürücü doğru mu?" doğrulaması.
+  Future<void> _showVisualVerify(RideStatus s) async {
+    final drv = s.acceptedDriver;
+    if (drv == null || !mounted) {
+      _visualVerifyShown = false;
+      return;
+    }
+
+    final match = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: FerxgoColors.inkSoft,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.verified_user, color: FerxgoColors.brand, size: 22),
+            SizedBox(width: 8),
+            Expanded(child: Text('Bindiğin araç bu mu?',
+              style: TextStyle(color: FerxgoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w800))),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: FerxgoColors.inkMuted,
+                    backgroundImage: (drv.avatar != null && drv.avatar!.isNotEmpty) ? NetworkImage(drv.avatar!) : null,
+                    child: (drv.avatar == null || drv.avatar!.isEmpty)
+                        ? const Icon(Icons.person, color: FerxgoColors.textMid) : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(drv.name,
+                          style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w800, fontSize: 16)),
+                        if (drv.vehicleLabel != null && drv.vehicleLabel!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(drv.vehicleLabel!,
+                              style: const TextStyle(color: FerxgoColors.textMid, fontSize: 13)),
+                          ),
+                        if (drv.plate != null && drv.plate!.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(top: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: FerxgoColors.brand.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: FerxgoColors.brand),
+                            ),
+                            child: Text(drv.plate!,
+                              style: const TextStyle(color: FerxgoColors.brand, fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 15)),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (drv.vehiclePhotos.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text('Araç fotoğrafları', style: TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 90,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: drv.vehiclePhotos.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) => ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        drv.vehiclePhotos[i],
+                        width: 124, height: 90, fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 124, height: 90, color: FerxgoColors.inkMuted,
+                          child: const Icon(Icons.directions_car, color: FerxgoColors.textLow),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              const Text('Araçtaki plaka ve fotoğraflarla karşılaştır. Güvenliğin için önemli.',
+                style: TextStyle(color: FerxgoColors.textLow, fontSize: 12, height: 1.4)),
+            ],
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        actions: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: FerxgoColors.success, foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Evet, doğru', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Hayır, eşleşmiyor — bildir',
+                    style: TextStyle(color: FerxgoColors.danger, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (match == null) {
+      _visualVerifyShown = false;
+      return;
+    }
+    await _submitVisualVerify(match);
+  }
+
+  Future<void> _submitVisualVerify(bool match) async {
+    try {
+      final res = await ref.read(customerRideRepositoryProvider).visualVerify(widget.publicId, match);
+      if (!mounted) return;
+      final msg = (res['message'] as String?) ?? (match ? 'İyi yolculuklar!' : 'Bildirimin alındı.');
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(
+          content: Text(msg),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: match ? FerxgoColors.success : FerxgoColors.danger,
+        ));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _visualVerifyShown = false; // hata → tekrar denenebilsin
+      });
+    }
   }
 
   Future<void> _pollMessages() async {
@@ -177,8 +339,9 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
                         Icon(Icons.info_outline, color: FerxgoColors.warning, size: 18),
                         SizedBox(width: 8),
                         Expanded(child: Text(
-                          'Sık iptal, güven puanını düşürür. Çok tekrarlanırsa bir süre yeni yolculuk oluşturamayabilirsin. '
-                          'Gerçekten gerekmedikçe iptal etmeni önermeyiz.',
+                          'Eşleşme sonrası iptal, iptal cezasına tabidir. Ceza, kayıtlı kredi kartından '
+                          'otomatik tahsil edilir; çekilemezse borç bakiyene eklenir ve ödenene kadar '
+                          'yeni yolculuk oluşturamazsın. Gerçekten gerekmedikçe iptal etmeni önermeyiz.',
                           style: TextStyle(color: FerxgoColors.textMid, fontSize: 12, height: 1.4),
                         )),
                       ],
@@ -190,13 +353,39 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
                 'Sürücü bulma süreci durdurulacak. Onaylıyor musun?',
                 style: TextStyle(color: FerxgoColors.textMid),
               ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false),
-            child: Text(accepted ? 'Vazgeçtim, beklerim' : 'Vazgeç')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: FerxgoColors.danger, foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Yine de iptal et'),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: FerxgoColors.brand,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(accepted ? 'Vazgeçtim, beklerim' : 'Vazgeç',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: FerxgoColors.danger,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(accepted ? 'Yine de iptal et' : 'Talebi iptal et',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -431,22 +620,35 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
       );
     }
     // accepted
-    return _Accepted(
-      status: s,
-      mapController: _map,
-      focus: _focus,
-      messages: _messages,
-      msgCtrl: _msgCtrl,
-      msgScroll: _msgScroll,
-      sendingMsg: _sendingMsg,
-      onSend: _send,
-      chatOpen: _chatOpen,
-      onToggleChat: () => setState(() => _chatOpen = !_chatOpen),
-      onConfirm: _busyAction ? null : _confirmArrival,
-      onCancel: _busyAction ? null : _cancel,
-      busyAction: _busyAction,
-      error: _error,
-      onErrorClose: () => setState(() => _error = null),
+    final drv = s.acceptedDriver;
+    final driverName = drv == null
+        ? 'Sürücü'
+        : (drv.fullName.isNotEmpty ? drv.fullName : drv.name);
+    final callArg = (publicId: widget.publicId, peerName: driverName);
+    return Stack(
+      children: [
+        _Accepted(
+          status: s,
+          publicId: widget.publicId,
+          mapController: _map,
+          focus: _focus,
+          messages: _messages,
+          msgCtrl: _msgCtrl,
+          msgScroll: _msgScroll,
+          sendingMsg: _sendingMsg,
+          onSend: _send,
+          chatOpen: _chatOpen,
+          onToggleChat: () => setState(() => _chatOpen = !_chatOpen),
+          onConfirm: _busyAction ? null : _confirmArrival,
+          onCancel: _busyAction ? null : _cancel,
+          onCall: () => startCallFor(ref, callArg),
+          busyAction: _busyAction,
+          error: _error,
+          onErrorClose: () => setState(() => _error = null),
+        ),
+        // Uygulama-içi sesli arama (gelen çağrı da burada yakalanır)
+        CallOverlay(publicId: widget.publicId, peerName: driverName),
+      ],
     );
   }
 }
@@ -787,6 +989,7 @@ class _Reconfirm extends StatelessWidget {
 class _Accepted extends StatelessWidget {
   const _Accepted({
     required this.status,
+    required this.publicId,
     required this.mapController,
     required this.focus,
     required this.messages,
@@ -798,12 +1001,15 @@ class _Accepted extends StatelessWidget {
     required this.onToggleChat,
     required this.onConfirm,
     required this.onCancel,
+    required this.onCall,
     required this.busyAction,
     required this.error,
     required this.onErrorClose,
   });
 
   final RideStatus status;
+  final String publicId;
+  final VoidCallback onCall;
   final MapController mapController;
   final LatLng focus;
   final List<RideMessage> messages;
@@ -823,16 +1029,31 @@ class _Accepted extends StatelessWidget {
   Widget build(BuildContext context) {
     final driver = status.acceptedDriver!;
     final arrived = status.arrivedAt != null;
-    final confirmed = status.customerConfirmedAt != null;
+    final started = status.isStarted; // eşleşme kodu doğrulandı → yolculuk başladı
 
-    // Sürücü → buluşma noktası ETA (canlı konumdan hesaplanır)
+    // Hedef: başladıysa VARIŞ noktası, değilse BULUŞMA noktası. ETA canlı konumdan.
     final pickup = status.pickupPosition;
+    final dropoff = status.dropoffPosition;
+    final target = started ? (dropoff ?? pickup) : pickup;
+    const dist = Distance();
     int? etaMin;
-    double? distKm;
-    if (pickup != null) {
-      distKm = const Distance().as(LengthUnit.Kilometer, driver.position, pickup);
+    double? distKm; // hedefe kalan mesafe
+    if (target != null) {
+      distKm = dist.as(LengthUnit.Kilometer, driver.position, target);
       final raw = (distKm * 2.2 + 0.5).round();
       etaMin = raw < 1 ? 1 : raw;
+    }
+
+    // İlerleme yüzdesi (yolculuk başladıysa): kat edilen / toplam
+    double? progress;
+    if (started && dropoff != null && distKm != null) {
+      final total = (status.tripDistanceKm != null && status.tripDistanceKm! > 0)
+          ? status.tripDistanceKm!
+          : dist.as(LengthUnit.Kilometer, pickup ?? driver.position, dropoff);
+      if (total > 0) {
+        final covered = (total - distKm).clamp(0.0, total);
+        progress = (covered / total).clamp(0.0, 1.0);
+      }
     }
 
     // Durum şeridi: renk + başlık + alt yazı
@@ -840,7 +1061,7 @@ class _Accepted extends StatelessWidget {
     final String stTitle;
     final String stSub;
     final IconData stIcon;
-    if (confirmed) {
+    if (started) {
       stColor = FerxgoColors.success;
       stTitle = 'Yolculuk başladı';
       stSub = 'İyi yolculuklar!';
@@ -848,7 +1069,7 @@ class _Accepted extends StatelessWidget {
     } else if (arrived) {
       stColor = FerxgoColors.warning;
       stTitle = 'Sürücü buluşma noktasında';
-      stSub = 'Buluşunca "Sürücüyü gördüm"e bas';
+      stSub = 'Kodu sürücüye göster, yolculuk başlasın';
       stIcon = Icons.emoji_flags;
     } else {
       stColor = FerxgoColors.success;
@@ -874,26 +1095,58 @@ class _Accepted extends StatelessWidget {
               userAgentPackageName: 'com.ferxgo',
               maxZoom: 19,
             ),
+            // Rota çizgisi: buluşma → varış (yolculuk başlayınca belirginleşir)
+            if (pickup != null && dropoff != null)
+              PolylineLayer(polylines: [
+                Polyline(
+                  points: [pickup, dropoff],
+                  strokeWidth: started ? 5 : 3,
+                  color: (started ? FerxgoColors.brand : FerxgoColors.textLow)
+                      .withValues(alpha: started ? 0.9 : 0.4),
+                  borderStrokeWidth: 1,
+                  borderColor: Colors.black26,
+                ),
+              ]),
             MarkerLayer(markers: [
               if (pickup != null)
                 Marker(
                   point: pickup,
                   width: 40, height: 40,
-                  child: const Icon(Icons.person_pin_circle, color: FerxgoColors.danger, size: 34),
+                  child: Icon(started ? Icons.trip_origin : Icons.person_pin_circle,
+                    color: started ? FerxgoColors.textMid : FerxgoColors.danger, size: started ? 22 : 34),
+                ),
+              // Varış noktası
+              if (dropoff != null)
+                Marker(
+                  point: dropoff,
+                  width: 40, height: 40,
+                  child: const Icon(Icons.place, color: FerxgoColors.danger, size: 34),
                 ),
               // Sürücünün canlı konumu — üstünde ismi (web pin'i gibi)
               Marker(
                 point: driver.position,
                 width: 140, height: 62,
-                child: _DriverMapMarker(name: driver.name, etaMin: arrived ? null : etaMin),
+                child: _DriverMapMarker(name: driver.name, etaMin: etaMin),
               ),
             ]),
           ],
         ),
-        // Üst durum şeridi — belirgin, renkli
+        // Üst şerit: yolculuk başladıysa canlı ilerleme kartı, değilse durum şeridi
         Positioned(
           top: 12, left: 12, right: 12,
-          child: _StatusStrip(color: stColor, title: stTitle, subtitle: stSub, icon: stIcon),
+          child: started
+              ? _ProgressStrip(etaMin: etaMin, remainingKm: distKm, progress: progress)
+              : _StatusStrip(color: stColor, title: stTitle, subtitle: stSub, icon: stIcon),
+        ),
+        // Acil yardım (panik) butonu — durum şeridinin altında sağda
+        Positioned(
+          top: 86, right: 14,
+          child: PanicButton(
+            ridePublicId: publicId,
+            shareDescription: 'Sürücü: ${driver.name}'
+                '${driver.vehicleLabel != null ? ', ${driver.vehicleLabel}' : ''}'
+                '${driver.plate != null ? ' (${driver.plate})' : ''}.',
+          ),
         ),
 
         // Alt panel
@@ -916,8 +1169,12 @@ class _Accepted extends StatelessWidget {
                 const SizedBox(height: 10),
                 Container(width: 36, height: 4, decoration: BoxDecoration(color: FerxgoColors.line, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 12),
-                _DriverHeader(driver: driver, onChat: onToggleChat, chatOpen: chatOpen),
+                _DriverHeader(driver: driver, onChat: onToggleChat, chatOpen: chatOpen, onCall: onCall),
                 if (!chatOpen) ...[
+                  if (status.matchCode != null && !started) ...[
+                    const SizedBox(height: 12),
+                    _MatchCodeCard(code: status.matchCode!),
+                  ],
                   const SizedBox(height: 10),
                   _RideInfoRow(etaMin: etaMin, distKm: distKm, arrived: arrived),
                 ],
@@ -932,12 +1189,10 @@ class _Accepted extends StatelessWidget {
                   child: chatOpen
                       ? _ChatPanel(scroll: msgScroll, messages: messages)
                       : _ActionsPanel(
-                          arrived: arrived,
-                          confirmed: confirmed,
-                          onConfirm: onConfirm,
                           onCancel: onCancel,
                           scroll: sc,
                           busy: busyAction,
+                          started: started,
                         ),
                 ),
 
@@ -951,6 +1206,62 @@ class _Accepted extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Eşleşme kodu kartı — yolcuya gösterilir; sürücü buluşmada girince başlar.
+class _MatchCodeCard extends StatelessWidget {
+  const _MatchCodeCard({required this.code});
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [FerxgoColors.brand.withValues(alpha: 0.22), FerxgoColors.inkSoft],
+          begin: Alignment.centerLeft, end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('EŞLEŞME KODU',
+                style: TextStyle(color: FerxgoColors.brand, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+              SizedBox(height: 2),
+              Text('Sürücüye göster',
+                style: TextStyle(color: FerxgoColors.textMid, fontSize: 12)),
+            ],
+          ),
+          const Spacer(),
+          // Haneler ayrı kutularda — okunaklı
+          Row(
+            children: [
+              for (final ch in code.split('')) ...[
+                Container(
+                  width: 38, height: 46,
+                  margin: const EdgeInsets.only(left: 6),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: FerxgoColors.ink,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.5)),
+                  ),
+                  child: Text(ch,
+                    style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 24, fontWeight: FontWeight.w900)),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1036,6 +1347,144 @@ class _RideInfoRow extends StatelessWidget {
       );
 }
 
+/// Yolculuk başladıktan sonra üstte canlı ilerleme kartı:
+/// pulsing 🚗 + "X dk kaldı" + kalan km + amber→yeşil gradient ilerleme çubuğu.
+class _ProgressStrip extends StatefulWidget {
+  const _ProgressStrip({required this.etaMin, required this.remainingKm, required this.progress});
+  final int? etaMin;
+  final double? remainingKm;
+  final double? progress; // 0..1
+
+  @override
+  State<_ProgressStrip> createState() => _ProgressStripState();
+}
+
+class _ProgressStripState extends State<_ProgressStrip> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eta = widget.etaMin;
+    final km = widget.remainingKm;
+    final pct = ((widget.progress ?? 0) * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [FerxgoColors.brand.withValues(alpha: 0.22), FerxgoColors.inkSoft.withValues(alpha: 0.96)],
+          begin: Alignment.centerLeft, end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.4)),
+        boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 12, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Pulsing araç ikonu
+              SizedBox(
+                width: 48, height: 48,
+                child: AnimatedBuilder(
+                  animation: _pulse,
+                  builder: (_, child) {
+                    final t = _pulse.value;
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 30 + 18 * t, height: 30 + 18 * t,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: FerxgoColors.brand.withValues(alpha: (1 - t) * 0.35),
+                          ),
+                        ),
+                        child!,
+                      ],
+                    );
+                  },
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: FerxgoColors.brand.withValues(alpha: 0.20),
+                      border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.6), width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text('🚗', style: TextStyle(fontSize: 20)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('HEDEFE DOĞRU',
+                      style: TextStyle(color: FerxgoColors.brand, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                    const SizedBox(height: 2),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(eta != null ? '$eta' : '—',
+                          style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 28, fontWeight: FontWeight.w900, height: 1)),
+                        const SizedBox(width: 5),
+                        const Text('dk kaldı', style: TextStyle(color: FerxgoColors.textMid, fontSize: 13)),
+                        const Spacer(),
+                        if (km != null)
+                          Text('${km.toStringAsFixed(1)} km',
+                            style: const TextStyle(color: FerxgoColors.brand, fontSize: 14, fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Gradient ilerleme çubuğu (amber → yeşil)
+          Stack(
+            children: [
+              Container(
+                height: 7,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              LayoutBuilder(
+                builder: (_, c) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeOut,
+                  height: 7,
+                  width: c.maxWidth * (widget.progress ?? 0).clamp(0.0, 1.0),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [FerxgoColors.brand, FerxgoColors.success]),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('Yolculuğun %$pct tamamlandı',
+            style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}
+
 class _StatusStrip extends StatelessWidget {
   const _StatusStrip({required this.color, required this.title, required this.subtitle, required this.icon});
   final Color color;
@@ -1080,19 +1529,11 @@ class _StatusStrip extends StatelessWidget {
 }
 
 class _DriverHeader extends StatelessWidget {
-  const _DriverHeader({required this.driver, required this.onChat, required this.chatOpen});
+  const _DriverHeader({required this.driver, required this.onChat, required this.chatOpen, required this.onCall});
   final NearbyDriver driver;
   final VoidCallback onChat;
   final bool chatOpen;
-
-  Future<void> _call() async {
-    final phone = driver.phone;
-    if (phone == null || phone.isEmpty) return;
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
-  }
+  final VoidCallback onCall;
 
   @override
   Widget build(BuildContext context) {
@@ -1149,12 +1590,11 @@ class _DriverHeader extends StatelessWidget {
               ],
             ),
           ),
-          // Ara + Mesaj
-          if (driver.phone != null && driver.phone!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: _RoundBtn(icon: Icons.call, color: FerxgoColors.success, onTap: _call, tooltip: 'Ara'),
-            ),
+          // Uygulama-içi sesli arama (WebRTC) + Mesaj
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: _RoundBtn(icon: Icons.call, color: FerxgoColors.success, onTap: onCall, tooltip: 'Ara'),
+          ),
           _RoundBtn(
             icon: chatOpen ? Icons.close : Icons.chat_bubble_outline,
             color: FerxgoColors.brand,
@@ -1193,19 +1633,15 @@ class _RoundBtn extends StatelessWidget {
 
 class _ActionsPanel extends StatelessWidget {
   const _ActionsPanel({
-    required this.arrived,
-    required this.confirmed,
-    required this.onConfirm,
     required this.onCancel,
     required this.scroll,
     required this.busy,
+    required this.started,
   });
-  final bool arrived;
-  final bool confirmed;
-  final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
   final ScrollController scroll;
   final bool busy;
+  final bool started;
 
   @override
   Widget build(BuildContext context) {
@@ -1213,37 +1649,30 @@ class _ActionsPanel extends StatelessWidget {
       controller: scroll,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
       children: [
-        if (arrived && !confirmed)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: FilledButton.icon(
-              onPressed: onConfirm,
-              icon: const Icon(Icons.check_circle),
-              label: const Text('Sürücüyü gördüm'),
-              style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-            ),
-          )
-        else if (confirmed)
+        // Yolculuk başladıysa iptal yok — sadece "sürüyor" bilgisi.
+        if (started)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
+            padding: EdgeInsets.symmetric(vertical: 6),
             child: Row(
               children: [
-                Icon(Icons.check, color: FerxgoColors.success),
+                Icon(Icons.navigation, color: FerxgoColors.success, size: 20),
                 SizedBox(width: 8),
-                Text('Buluştun, yolculuk başladı.', style: TextStyle(color: FerxgoColors.textMid)),
+                Expanded(child: Text('Yolculuk sürüyor. İyi yolculuklar!',
+                  style: TextStyle(color: FerxgoColors.textMid, fontSize: 13))),
               ],
             ),
+          )
+        else
+          OutlinedButton.icon(
+            onPressed: busy ? null : onCancel,
+            icon: const Icon(Icons.close),
+            label: const Text('Talebi iptal et'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: FerxgoColors.danger,
+              side: const BorderSide(color: FerxgoColors.danger),
+              minimumSize: const Size(double.infinity, 50),
+            ),
           ),
-        OutlinedButton.icon(
-          onPressed: confirmed || busy ? null : onCancel,
-          icon: const Icon(Icons.close),
-          label: const Text('Talebi iptal et'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: FerxgoColors.danger,
-            side: const BorderSide(color: FerxgoColors.danger),
-            minimumSize: const Size(double.infinity, 50),
-          ),
-        ),
       ],
     );
   }
