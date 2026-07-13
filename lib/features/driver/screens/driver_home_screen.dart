@@ -543,7 +543,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                   child: _chatOpen
                       ? _DriverChat(scroll: _msgScroll, messages: _messages)
                       : _ActiveActions(active: a, busy: _busy, scroll: sc,
-                          onArrived: () => _runActive(_repo.markArrived),
+                          onArrived: () => _arrivedThenCode(),
                           onNoShow: () => _confirmNoShow(),
                           onComplete: () => _confirmComplete(),
                           onStart: () => _startWithCode(),
@@ -567,6 +567,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     if (ok != true) return;
     final loc = _myPosition;
     await _runActive(() => _repo.reportNoShow(lat: loc?.latitude, lng: loc?.longitude));
+  }
+
+  /// "Vardım" → varış kaydedilir, hemen ardından kod giriş ekranı açılır.
+  Future<void> _arrivedThenCode() async {
+    await _runActive(_repo.markArrived);
+    if (mounted) await _startWithCode();
   }
 
   /// Eşleşme kodu ile yolculuğu başlat — yolcunun 4 haneli kodunu gir.
