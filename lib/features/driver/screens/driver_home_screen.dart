@@ -546,6 +546,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                           onArrived: () => _runActive(_repo.markArrived),
                           onNoShow: () => _confirmNoShow(),
                           onComplete: () => _confirmComplete(),
+                          onStart: () => _startWithCode(),
                         ),
                 ),
                 if (_chatOpen) _DriverMessageInput(
@@ -565,6 +566,81 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     if (ok != true) return;
     final loc = _myPosition;
     await _runActive(() => _repo.reportNoShow(lat: loc?.latitude, lng: loc?.longitude));
+  }
+
+  /// Eşleşme kodu ile yolculuğu başlat — yolcunun 4 haneli kodunu gir.
+  Future<void> _startWithCode() async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dctx) {
+        String? err;
+        return StatefulBuilder(
+          builder: (dctx, setD) {
+            Future<void> submit() async {
+              final code = ctrl.text.trim();
+              if (code.length != 4) {
+                setD(() => err = 'Kod 4 haneli olmalı.');
+                return;
+              }
+              try {
+                await _repo.startWithCode(code);
+                if (dctx.mounted) Navigator.pop(dctx, true);
+              } on ApiException catch (e) {
+                setD(() => err = e.message);
+              }
+            }
+
+            return AlertDialog(
+              backgroundColor: FerxgoColors.inkSoft,
+              title: const Text('Yolculuğu başlat',
+                style: TextStyle(color: FerxgoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w800)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Yolcunun uygulamasındaki 4 haneli eşleşme kodunu gir.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: FerxgoColors.textMid, fontSize: 13, height: 1.4)),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: ctrl,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    maxLength: 4,
+                    style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: 14),
+                    decoration: InputDecoration(
+                      counterText: '',
+                      hintText: '••••',
+                      hintStyle: const TextStyle(color: FerxgoColors.textLow, letterSpacing: 14),
+                      filled: true,
+                      fillColor: FerxgoColors.ink,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                    onChanged: (_) { if (err != null) setD(() => err = null); },
+                    onSubmitted: (_) => submit(),
+                  ),
+                  if (err != null) ...[
+                    const SizedBox(height: 10),
+                    Text(err!, textAlign: TextAlign.center,
+                      style: const TextStyle(color: FerxgoColors.danger, fontSize: 13)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('Vazgeç')),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: FerxgoColors.success, foregroundColor: Colors.white),
+                  onPressed: submit,
+                  child: const Text('Başlat'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    if (ok == true) await _poll();
   }
 
   Future<void> _confirmComplete() async {
@@ -852,6 +928,7 @@ class _ActiveActions extends StatelessWidget {
     required this.onArrived,
     required this.onNoShow,
     required this.onComplete,
+    required this.onStart,
   });
   final DriverActive active;
   final bool busy;
@@ -859,6 +936,7 @@ class _ActiveActions extends StatelessWidget {
   final VoidCallback onArrived;
   final VoidCallback onNoShow;
   final VoidCallback onComplete;
+  final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {
@@ -872,45 +950,49 @@ class _ActiveActions extends StatelessWidget {
         _RouteRow(icon: Icons.place, color: FerxgoColors.danger, text: active.dropoffAddress),
         const SizedBox(height: 16),
 
-        if (!active.arrived)
-          FilledButton.icon(
-            onPressed: busy ? null : onArrived,
-            icon: const Icon(Icons.emoji_flags),
-            label: const Text('Buluşma noktasına vardım'),
-            style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 52)),
-          )
-        else ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: active.confirmed ? FerxgoColors.success.withValues(alpha: 0.12) : FerxgoColors.inkMuted,
-              borderRadius: BorderRadius.circular(12),
+        if (!active.started) ...[
+          // Varış durumu
+          if (!active.arrived)
+            OutlinedButton.icon(
+              onPressed: busy ? null : onArrived,
+              icon: const Icon(Icons.emoji_flags, color: FerxgoColors.brand),
+              label: const Text('Buluşma noktasına vardım', style: TextStyle(color: FerxgoColors.brand)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: FerxgoColors.brand),
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: FerxgoColors.inkMuted, borderRadius: BorderRadius.circular(12)),
+              child: const Row(
+                children: [
+                  Icon(Icons.hourglass_top, color: FerxgoColors.warning, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(child: Text('Vardın. Yolcuyla buluş ve kodu iste.',
+                    style: TextStyle(color: FerxgoColors.textMid, fontSize: 13))),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                Icon(active.confirmed ? Icons.check_circle : Icons.hourglass_top,
-                  color: active.confirmed ? FerxgoColors.success : FerxgoColors.warning, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    active.confirmed ? 'Yolcu buluştu, yolculuk sürüyor.' : 'Vardın. Yolcu bekleniyor…',
-                    style: const TextStyle(color: FerxgoColors.textMid, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 12),
+
+          // ANA AKSİYON — eşleşme kodu ile yolculuğu başlat
           FilledButton.icon(
-            onPressed: busy ? null : onComplete,
-            icon: const Icon(Icons.flag_circle),
-            label: const Text('Yolculuğu tamamla'),
+            onPressed: busy ? null : onStart,
+            icon: const Icon(Icons.vpn_key),
+            label: const Text('Yolculuğu başlat'),
             style: FilledButton.styleFrom(
               backgroundColor: FerxgoColors.success, foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 52),
+              minimumSize: const Size(double.infinity, 54),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
+          const Text('Yolcunun uygulamasındaki 4 haneli kodu girerek başlat.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
+          const SizedBox(height: 10),
+
           if (!active.confirmed)
             OutlinedButton.icon(
               onPressed: (busy || !active.noShowButtonReady) ? null : onNoShow,
@@ -926,6 +1008,33 @@ class _ActiveActions extends StatelessWidget {
                 minimumSize: const Size(double.infinity, 50),
               ),
             ),
+        ] else ...[
+          // Yolculuk başladı → sürüyor
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: FerxgoColors.success.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.navigation, color: FerxgoColors.success, size: 20),
+                SizedBox(width: 10),
+                Expanded(child: Text('Yolculuk sürüyor. İyi yolculuklar!',
+                  style: TextStyle(color: FerxgoColors.textMid, fontSize: 13))),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: busy ? null : onComplete,
+            icon: const Icon(Icons.flag_circle),
+            label: const Text('Yolculuğu tamamla'),
+            style: FilledButton.styleFrom(
+              backgroundColor: FerxgoColors.success, foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 52),
+            ),
+          ),
         ],
       ],
     );

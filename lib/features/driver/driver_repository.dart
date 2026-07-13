@@ -61,6 +61,12 @@ class DriverRepository {
     await _api.postJson('/driver/active/arrived');
   }
 
+  /// Yolcunun gösterdiği 4 haneli eşleşme kodunu gir → yolculuğu başlat.
+  /// Kod hatalıysa ApiException (422) fırlar.
+  Future<void> startWithCode(String code) async {
+    await _api.postJson('/driver/active/start-code', body: {'code': code});
+  }
+
   Future<void> reportNoShow({double? lat, double? lng, String? note}) async {
     await _api.postJson('/driver/active/no-show', body: {
       'lat': ?lat,

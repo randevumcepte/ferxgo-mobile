@@ -996,6 +996,7 @@ class _Accepted extends StatelessWidget {
   Widget build(BuildContext context) {
     final driver = status.acceptedDriver!;
     final arrived = status.arrivedAt != null;
+    final started = status.isStarted; // eşleşme kodu doğrulandı → yolculuk başladı
     final confirmed = status.customerConfirmedAt != null;
 
     // Sürücü → buluşma noktası ETA (canlı konumdan hesaplanır)
@@ -1013,7 +1014,7 @@ class _Accepted extends StatelessWidget {
     final String stTitle;
     final String stSub;
     final IconData stIcon;
-    if (confirmed) {
+    if (started) {
       stColor = FerxgoColors.success;
       stTitle = 'Yolculuk başladı';
       stSub = 'İyi yolculuklar!';
@@ -1021,7 +1022,7 @@ class _Accepted extends StatelessWidget {
     } else if (arrived) {
       stColor = FerxgoColors.warning;
       stTitle = 'Sürücü buluşma noktasında';
-      stSub = 'Buluşunca "Sürücüyü gördüm"e bas';
+      stSub = 'Kodu sürücüye göster, yolculuk başlasın';
       stIcon = Icons.emoji_flags;
     } else {
       stColor = FerxgoColors.success;
@@ -1091,6 +1092,10 @@ class _Accepted extends StatelessWidget {
                 const SizedBox(height: 12),
                 _DriverHeader(driver: driver, onChat: onToggleChat, chatOpen: chatOpen),
                 if (!chatOpen) ...[
+                  if (status.matchCode != null && !started) ...[
+                    const SizedBox(height: 12),
+                    _MatchCodeCard(code: status.matchCode!),
+                  ],
                   const SizedBox(height: 10),
                   _RideInfoRow(etaMin: etaMin, distKm: distKm, arrived: arrived),
                 ],
@@ -1124,6 +1129,62 @@ class _Accepted extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Eşleşme kodu kartı — yolcuya gösterilir; sürücü buluşmada girince başlar.
+class _MatchCodeCard extends StatelessWidget {
+  const _MatchCodeCard({required this.code});
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [FerxgoColors.brand.withValues(alpha: 0.22), FerxgoColors.inkSoft],
+          begin: Alignment.centerLeft, end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('EŞLEŞME KODU',
+                style: TextStyle(color: FerxgoColors.brand, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+              SizedBox(height: 2),
+              Text('Sürücüye göster',
+                style: TextStyle(color: FerxgoColors.textMid, fontSize: 12)),
+            ],
+          ),
+          const Spacer(),
+          // Haneler ayrı kutularda — okunaklı
+          Row(
+            children: [
+              for (final ch in code.split('')) ...[
+                Container(
+                  width: 38, height: 46,
+                  margin: const EdgeInsets.only(left: 6),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: FerxgoColors.ink,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.5)),
+                  ),
+                  child: Text(ch,
+                    style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 24, fontWeight: FontWeight.w900)),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

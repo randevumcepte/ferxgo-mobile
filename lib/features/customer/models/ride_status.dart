@@ -25,6 +25,7 @@ class RideStatus {
     required this.customerReconfirmedAt,
     required this.pickupPosition,
     required this.pickupAddress,
+    this.matchCode,
     this.startedAt,
     this.visualVerifiedAt,
     this.visualVerifyFailedAt,
@@ -47,6 +48,13 @@ class RideStatus {
   /// Buluşma noktası (sürücü→pickup ETA + harita için)
   final LatLng? pickupPosition;
   final String? pickupAddress;
+
+  /// Eşleşme kodu — yolcuya gösterilir, sürücü buluşmada girer (yolculuk başlar).
+  /// Yolculuk başlayınca backend null döndürür.
+  final String? matchCode;
+
+  /// Yolculuk başladı mı (eşleşme kodu doğrulandıktan sonra dolar)
+  bool get isStarted => startedAt != null;
 
   /// Auto ("Hadi Gidelim") dağıtımı — favori dalgası mı, yakın havuz mu
   final bool isFavoriteWave;
@@ -113,6 +121,7 @@ class RideStatus {
       customerReconfirmedAt: _parseDate(json['customer_reconfirmed_at']),
       pickupPosition: _parseLatLng(json['pickup_lat'], json['pickup_lng']),
       pickupAddress: json['pickup_address'] as String?,
+      matchCode: json['match_code'] as String?,
       startedAt: _parseDate(json['started_at']),
       visualVerifiedAt: _parseDate(json['visual_verified_at']),
       visualVerifyFailedAt: _parseDate(json['visual_verify_failed_at']),
