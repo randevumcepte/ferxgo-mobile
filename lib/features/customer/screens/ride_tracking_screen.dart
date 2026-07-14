@@ -47,6 +47,14 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
   bool _busyAction = false;
   bool _visualVerifyShown = false; // araç/sürücü doğrulama modalı bir kez açılsın
 
+  // Gerçek yol rotası (OSRM) — sürücü → hedef. Sürücü ~200m hareket edince yenilenir.
+  List<LatLng>? _routePoints;
+  double? _routeKm;
+  int? _routeMin;
+  LatLng? _routeAnchor; // rotanın çekildiği sürücü konumu
+  bool _routeStartedTarget = false; // rota, başlamış hedefe (dropoff) göre mi
+  bool _routeBusy = false;
+
   // Sohbet
   final TextEditingController _msgCtrl = TextEditingController();
   final ScrollController _msgScroll = ScrollController();
@@ -98,10 +106,45 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
         _visualVerifyShown = true;
         _showVisualVerify(s);
       }
+      // Gerçek yol rotasını çek/yenile (sürücü hareket edince)
+      _maybeRefreshRoute(s);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
     } catch (_) {}
+  }
+
+  /// Sürücü konumu ~200m değişince ya da hedef değişince gerçek yol rotasını yenile.
+  void _maybeRefreshRoute(RideStatus s) {
+    final driver = s.acceptedDriver;
+    if (driver == null || _routeBusy) return;
+    final target = s.isStarted ? (s.dropoffPosition ?? s.pickupPosition) : s.pickupPosition;
+    if (target == null) return;
+
+    final needsRefresh = _routePoints == null ||
+        _routeStartedTarget != s.isStarted ||
+        _routeAnchor == null ||
+        const Distance().as(LengthUnit.Meter, _routeAnchor!, driver.position) > 200;
+    if (!needsRefresh) return;
+
+    _refreshRoute(driver.position, target, s.isStarted);
+  }
+
+  Future<void> _refreshRoute(LatLng from, LatLng to, bool startedTarget) async {
+    _routeBusy = true;
+    try {
+      final res = await ref.read(customerRideRepositoryProvider).route(from: from, to: to);
+      if (res == null || !mounted) return;
+      setState(() {
+        _routePoints = res.points;
+        _routeKm = res.distanceKm;
+        _routeMin = res.durationMin;
+        _routeAnchor = from;
+        _routeStartedTarget = startedTarget;
+      });
+    } finally {
+      _routeBusy = false;
+    }
   }
 
   /// Yolculuk başladıktan sonra "bindiğim araç/sürücü doğru mu?" doğrulaması.
@@ -632,6 +675,9 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
           publicId: widget.publicId,
           mapController: _map,
           focus: _focus,
+          routePoints: _routePoints,
+          routeKm: _routeKm,
+          routeMin: _routeMin,
           messages: _messages,
           msgCtrl: _msgCtrl,
           msgScroll: _msgScroll,
@@ -992,6 +1038,9 @@ class _Accepted extends StatelessWidget {
     required this.publicId,
     required this.mapController,
     required this.focus,
+    this.routePoints,
+    this.routeKm,
+    this.routeMin,
     required this.messages,
     required this.msgCtrl,
     required this.msgScroll,
@@ -1012,6 +1061,9 @@ class _Accepted extends StatelessWidget {
   final VoidCallback onCall;
   final MapController mapController;
   final LatLng focus;
+  final List<LatLng>? routePoints;
+  final double? routeKm;
+  final int? routeMin;
   final List<RideMessage> messages;
   final TextEditingController msgCtrl;
   final ScrollController msgScroll;
@@ -1043,6 +1095,9 @@ class _Accepted extends StatelessWidget {
       final raw = (distKm * 2.2 + 0.5).round();
       etaMin = raw < 1 ? 1 : raw;
     }
+    // Gerçek yol rotası geldiyse kuş uçuşu yerine onu kullan (mesafe + süre).
+    if (routeKm != null && routeKm! > 0) distKm = routeKm;
+    if (routeMin != null && routeMin! > 0) etaMin = routeMin;
 
     // İlerleme yüzdesi (yolculuk başladıysa): kat edilen / toplam
     double? progress;
@@ -1095,8 +1150,18 @@ class _Accepted extends StatelessWidget {
               userAgentPackageName: 'com.ferxgo',
               maxZoom: 19,
             ),
-            // Rota çizgisi: buluşma → varış (yolculuk başlayınca belirginleşir)
-            if (pickup != null && dropoff != null)
+            // Rota çizgisi: GERÇEK yol (OSRM) varsa onu çiz; yoksa düz çizgiye düş.
+            if (routePoints != null && routePoints!.length >= 2)
+              PolylineLayer(polylines: [
+                Polyline(
+                  points: routePoints!,
+                  strokeWidth: started ? 6 : 4,
+                  color: FerxgoColors.brand.withValues(alpha: started ? 0.95 : 0.7),
+                  borderStrokeWidth: 1.5,
+                  borderColor: Colors.black38,
+                ),
+              ])
+            else if (pickup != null && dropoff != null)
               PolylineLayer(polylines: [
                 Polyline(
                   points: [pickup, dropoff],

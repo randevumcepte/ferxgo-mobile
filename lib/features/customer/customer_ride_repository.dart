@@ -106,6 +106,32 @@ class CustomerRideRepository {
     );
   }
 
+  /// İki nokta arası gerçek sürüş rotası (yol çizgisi + mesafe/süre). OSRM proxy.
+  Future<RouteResult?> route({required LatLng from, required LatLng to}) async {
+    try {
+      final res = await _api.getJson('/customer/route', query: {
+        'from_lat': from.latitude,
+        'from_lng': from.longitude,
+        'to_lat': to.latitude,
+        'to_lng': to.longitude,
+      });
+      final raw = (res['points'] as List? ?? const []);
+      final points = raw
+          .whereType<List>()
+          .where((p) => p.length >= 2)
+          .map((p) => LatLng((p[0] as num).toDouble(), (p[1] as num).toDouble()))
+          .toList(growable: false);
+      if (points.isEmpty) return null;
+      return RouteResult(
+        points: points,
+        distanceKm: (res['distance_km'] as num?)?.toDouble() ?? 0,
+        durationMin: (res['duration_min'] as num?)?.toInt() ?? 0,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ─── Fiyat hesabı ─────────────────────────────────────────
   Future<Map<String, dynamic>> calculateFare({
     required int vehicleClassId,
@@ -253,6 +279,14 @@ class NearbyResult {
   const NearbyResult({required this.drivers, required this.totalOnline});
   final List<NearbyDriver> drivers;
   final int totalOnline;
+}
+
+/// OSRM sürüş rotası — yol çizgisi noktaları + gerçek mesafe/süre.
+class RouteResult {
+  const RouteResult({required this.points, required this.distanceKm, required this.durationMin});
+  final List<LatLng> points;
+  final double distanceKm;
+  final int durationMin;
 }
 
 final customerRideRepositoryProvider = Provider<CustomerRideRepository>((ref) {
