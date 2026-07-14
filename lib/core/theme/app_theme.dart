@@ -49,6 +49,7 @@ class FerxgoTheme {
       filledButtonTheme: _filledButton(),
       outlinedButtonTheme: _outlinedButton(dark: true),
       textButtonTheme: _textButton(),
+      snackBarTheme: _snackBar(),
     );
   }
 
@@ -91,6 +92,7 @@ class FerxgoTheme {
       filledButtonTheme: _filledButton(),
       outlinedButtonTheme: _outlinedButton(dark: false),
       textButtonTheme: _textButton(),
+      snackBarTheme: _snackBar(),
     );
   }
 
@@ -162,5 +164,20 @@ class FerxgoTheme {
           foregroundColor: FerxgoColors.brand,
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
+      );
+
+  /// Tüm SnackBar/bildirimler — koyu zemin + BEYAZ okunur yazı (her iki modda).
+  static SnackBarThemeData _snackBar() => SnackBarThemeData(
+        backgroundColor: FerxgoColors.inkMuted,
+        contentTextStyle: const TextStyle(
+          color: FerxgoColors.textHigh,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        actionTextColor: FerxgoColors.brand,
+        behavior: SnackBarBehavior.floating,
+        elevation: 6,
+        insetPadding: const EdgeInsets.fromLTRB(16, 5, 16, 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       );
 }
