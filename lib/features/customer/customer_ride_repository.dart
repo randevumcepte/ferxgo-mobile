@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -106,26 +107,40 @@ class CustomerRideRepository {
     );
   }
 
-  /// İki nokta arası gerçek sürüş rotası (yol çizgisi + mesafe/süre). OSRM proxy.
+  /// İki nokta arası gerçek sürüş rotası (yol çizgisi + mesafe/süre).
+  /// DOĞRUDAN telefondan OSRM'e gider (sunucu proxy'sine bağımlı değil).
+  static final Dio _osrm = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 6),
+    receiveTimeout: const Duration(seconds: 6),
+  ));
+
   Future<RouteResult?> route({required LatLng from, required LatLng to}) async {
     try {
-      final res = await _api.getJson('/customer/route', query: {
-        'from_lat': from.latitude,
-        'from_lng': from.longitude,
-        'to_lat': to.latitude,
-        'to_lng': to.longitude,
+      final url = 'https://router.project-osrm.org/route/v1/driving/'
+          '${from.longitude},${from.latitude};${to.longitude},${to.latitude}';
+      final resp = await _osrm.get(url, queryParameters: {
+        'overview': 'full',
+        'geometries': 'geojson',
       });
-      final raw = (res['points'] as List? ?? const []);
-      final points = raw
+      final data = resp.data as Map?;
+      final routes = data?['routes'] as List?;
+      if (routes == null || routes.isEmpty) return null;
+      final route = routes.first as Map;
+      final coords = (route['geometry'] as Map?)?['coordinates'] as List?;
+      if (coords == null || coords.isEmpty) return null;
+      // OSRM [lon, lat] → LatLng(lat, lon)
+      final points = coords
           .whereType<List>()
-          .where((p) => p.length >= 2)
-          .map((p) => LatLng((p[0] as num).toDouble(), (p[1] as num).toDouble()))
+          .where((c) => c.length >= 2)
+          .map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
           .toList(growable: false);
-      if (points.isEmpty) return null;
+      if (points.length < 2) return null;
+      final meters = (route['distance'] as num?)?.toDouble() ?? 0;
+      final seconds = (route['duration'] as num?)?.toDouble() ?? 0;
       return RouteResult(
         points: points,
-        distanceKm: (res['distance_km'] as num?)?.toDouble() ?? 0,
-        durationMin: (res['duration_min'] as num?)?.toInt() ?? 0,
+        distanceKm: meters / 1000,
+        durationMin: (seconds / 60).ceil(),
       );
     } catch (_) {
       return null;
