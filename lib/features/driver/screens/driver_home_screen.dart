@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/config/app_config.dart';
@@ -482,6 +483,29 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   }
 
   // ─── ACTIVE (aktif yolculuk) ──────────────────────────────
+  /// Harici navigasyon (Google Maps / varsayılan) — hedefe kilitli sesli yol tarifi.
+  /// Başlamadıysa buluşma noktası, başladıysa varış noktası.
+  Future<void> _openNavigation(DriverActive a) async {
+    final target = (a.started ? a.dropoffPosition : null) ?? a.pickupPosition;
+    final lat = target.latitude.toStringAsFixed(6);
+    final lng = target.longitude.toStringAsFixed(6);
+    // Önce Google Maps turn-by-turn (intent), yoksa evrensel yol tarifi linki.
+    final navUri = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
+    final webUri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
+    try {
+      if (await canLaunchUrl(navUri)) {
+        await launchUrl(navUri);
+      } else {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Navigasyon uygulaması açılamadı.')));
+      }
+    }
+  }
+
   Widget _buildActive(DriverState s, DriverActive a) {
     return Stack(
       children: [
@@ -522,6 +546,31 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             ridePublicId: a.publicId,
             shareDescription: 'Yolcu: ${a.customerName}. '
                 'Güzergah: ${a.pickupAddress} → ${a.dropoffAddress}.',
+          ),
+        ),
+        // Navigasyonu Aç — sağ üstte (hedefe kilitli harici navigasyon)
+        Positioned(
+          top: 12, right: 14,
+          child: Material(
+            color: FerxgoColors.brand,
+            borderRadius: BorderRadius.circular(14),
+            elevation: 4,
+            child: InkWell(
+              onTap: () => _openNavigation(a),
+              borderRadius: BorderRadius.circular(14),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.navigation, color: Colors.black, size: 18),
+                    SizedBox(width: 6),
+                    Text('Navigasyon',
+                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
 

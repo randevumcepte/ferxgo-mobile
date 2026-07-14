@@ -142,6 +142,7 @@ class DriverActive {
     required this.pickupAddress,
     required this.pickupPosition,
     required this.dropoffAddress,
+    required this.dropoffPosition,
     required this.distanceKm,
     required this.durationMinutes,
     required this.estimatedFare,
@@ -164,6 +165,7 @@ class DriverActive {
   final String pickupAddress;
   final LatLng pickupPosition;
   final String dropoffAddress;
+  final LatLng? dropoffPosition;
   final double distanceKm;
   final int durationMinutes;
   final double? estimatedFare;
@@ -197,6 +199,9 @@ class DriverActive {
         asDoubleOr(json['pickup_lng'], 27.1428),
       ),
       dropoffAddress: (json['dropoff_address'] as String?) ?? '',
+      dropoffPosition: (asDoubleOrNull(json['dropoff_lat']) != null && asDoubleOrNull(json['dropoff_lng']) != null)
+          ? LatLng(asDoubleOr(json['dropoff_lat'], 0), asDoubleOr(json['dropoff_lng'], 0))
+          : null,
       distanceKm: asDoubleOr(json['distance_km'], 0),
       durationMinutes: asIntOr(json['duration_minutes'], 0),
       estimatedFare: asDoubleOrNull(json['estimated_fare']),
