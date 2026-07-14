@@ -63,11 +63,15 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
       body: SafeArea(
         child: Form(
           key: _formKey,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight - 32),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                 Row(
                   children: [
                     const FerxgoLogo(size: 22),
@@ -183,7 +187,10 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                     ),
                   ),
                 ),
-              ],
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
