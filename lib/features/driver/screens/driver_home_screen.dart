@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -53,7 +55,33 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   bool _sendingMsg = false;
   bool _chatOpen = false;
 
+  // Sesli uyarı: teklif gelince cihaz sesi çalar, teklif kalkınca susar.
+  bool _ringing = false;
+
   DriverRepository get _repo => ref.read(driverRepositoryProvider);
+
+  void _startOfferSound() {
+    if (_ringing) return;
+    _ringing = true;
+    try {
+      FlutterRingtonePlayer().play(
+        android: AndroidSounds.notification,
+        ios: IosSounds.electronic,
+        looping: true,   // teklif ekranda durdukça çalmaya devam etsin
+        volume: 1.0,
+        asAlarm: false,
+      );
+    } catch (_) {}
+    HapticFeedback.heavyImpact();
+  }
+
+  void _stopOfferSound() {
+    if (!_ringing) return;
+    _ringing = false;
+    try {
+      FlutterRingtonePlayer().stop();
+    } catch (_) {}
+  }
 
   @override
   void initState() {
@@ -64,6 +92,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 
   @override
   void dispose() {
+    _stopOfferSound();
     _stateTimer?.cancel();
     _locationTimer?.cancel();
     _msgCtrl.dispose();
@@ -95,6 +124,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         _state = s;
         _error = null;
       });
+      // Sesli uyarı: yeni teklif geldiyse çal, teklif kalktıysa durdur.
+      if (s.hasOffer && !s.hasActive) {
+        _startOfferSound();
+      } else {
+        _stopOfferSound();
+      }
       _syncLocationTimer(s);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -170,6 +205,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 
   // ─── Teklif aksiyonları ───────────────────────────────────
   Future<void> _acceptOffer(DriverOffer offer) async {
+    _stopOfferSound();
     setState(() => _busy = true);
     try {
       await _repo.acceptOffer(offer.publicId);
@@ -182,6 +218,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   }
 
   Future<void> _rejectOffer(DriverOffer offer) async {
+    _stopOfferSound();
     setState(() => _busy = true);
     try {
       await _repo.rejectOffer(offer.publicId);
@@ -194,6 +231,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   }
 
   Future<void> _counterOffer(DriverOffer offer) async {
+    _stopOfferSound();
     final neg = offer.negotiation;
     final base = offer.customerOffer;
     final min = neg?.minFare ?? (base * 0.6).roundToDouble();

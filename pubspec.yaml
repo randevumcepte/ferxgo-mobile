@@ -54,6 +54,9 @@ dependencies:
   flutter_webrtc: ^0.12.5
   permission_handler: ^11.3.1
 
+  # Sesli uyarı (sürücüye teklif gelince cihaz bildirim/alarm sesi)
+  flutter_ringtone_player: ^4.0.0+3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
