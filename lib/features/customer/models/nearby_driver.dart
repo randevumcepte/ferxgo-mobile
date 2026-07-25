@@ -105,15 +105,20 @@ class NearbyDriver {
       favoriteCount: asIntOr(json['favorite_count'], 0),
       isFemale: (json['is_female'] as bool?) ?? false,
       womenOnly: (json['women_only'] as bool?) ?? false,
-      availabilityStatus: json['availability_status'] as String?,
-      isOnline: (json['is_online'] as bool?) ?? (json['availability_status'] == 'online'),
+      availabilityStatus: _parseStatus(json),
+      isOnline: _parseOnline(json),
       maxPassengers: asIntOrNull(json['max_passengers']),
       phone: json['phone'] as String?,
       vehiclePhotos: (json['vehicle_photos'] as List?)?.whereType<String>().toList() ?? const [],
     );
   }
 
-  NearbyDriver copyWith({bool? isFavorite, int? favoriteCount}) {
+  NearbyDriver copyWith({
+    bool? isFavorite,
+    int? favoriteCount,
+    bool? isOnline,
+    String? availabilityStatus,
+  }) {
     return NearbyDriver(
       id: id,
       name: name,
@@ -134,8 +139,8 @@ class NearbyDriver {
       favoriteCount: favoriteCount ?? this.favoriteCount,
       isFemale: isFemale,
       womenOnly: womenOnly,
-      availabilityStatus: availabilityStatus,
-      isOnline: isOnline,
+      availabilityStatus: availabilityStatus ?? this.availabilityStatus,
+      isOnline: isOnline ?? this.isOnline,
       maxPassengers: maxPassengers,
       phone: phone,
       vehiclePhotos: vehiclePhotos,
@@ -147,5 +152,35 @@ class NearbyDriver {
     final lng = asDoubleOrNull(json['current_lng']);
     if (lat != null && lng != null) return LatLng(lat, lng);
     return fallback;
+  }
+
+  /// Müsaitlik durumunu farklı anahtar isimlerinden toplayıp normalize eder.
+  static String? _parseStatus(Map<String, dynamic> json) {
+    final raw = json['availability_status'] ??
+        json['availability'] ??
+        json['status'] ??
+        json['driver_status'];
+    final s = raw?.toString().trim().toLowerCase();
+    return (s == null || s.isEmpty) ? null : s;
+  }
+
+  /// Sürücü çevrimiçi mi — backend farklı temsiller gönderebilir:
+  /// is_online: true/1/"1"/"true", ya da availability_status: "online"/"available"/
+  /// "active"/"müsait" (büyük-küçük harf / boşluk / int / string farkları toleranslı).
+  static bool _parseOnline(Map<String, dynamic> json) {
+    // 1) Doğrudan boolean/int/string bayrakları
+    for (final key in const ['is_online', 'online', 'is_available', 'available']) {
+      final v = json[key];
+      if (v is bool) return v;
+      if (v is num) return v != 0;
+      if (v is String) {
+        final s = v.trim().toLowerCase();
+        if (const {'1', 'true', 'yes', 'online', 'available', 'active'}.contains(s)) return true;
+        if (const {'0', 'false', 'no', 'offline', 'busy'}.contains(s)) return false;
+      }
+    }
+    // 2) Durum metni
+    final st = _parseStatus(json);
+    return st == 'online' || st == 'available' || st == 'active' || st == 'müsait';
   }
 }

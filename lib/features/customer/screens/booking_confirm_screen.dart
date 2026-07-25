@@ -98,11 +98,14 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
   List<NearbyDriver> _tabDrivers() {
     final favs = _favorites ?? const <NearbyDriver>[];
     final near = _nearby ?? const <NearbyDriver>[];
+    // Canlı müsaitlik nearby'dan gelir. Favori kaydı bayat (offline) online
+    // durumu tutabildiği için, nearby'da online görünen sürücüyü online say.
+    final liveById = {for (final d in near) d.id: d};
     switch (_tab) {
       case _SourceTab.all:
         return const [];
       case _SourceTab.favorites:
-        return favs;
+        return favs.map((d) => _withLiveStatus(d, liveById)).toList();
       case _SourceTab.pool:
         return near;
       case _SourceTab.women:
@@ -110,10 +113,19 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         final seen = <int>{};
         final out = <NearbyDriver>[];
         for (final d in [...favs, ...near]) {
-          if (d.isFemale && seen.add(d.id)) out.add(d);
+          if (d.isFemale && seen.add(d.id)) out.add(_withLiveStatus(d, liveById));
         }
         return out;
     }
+  }
+
+  /// Favori kaydına nearby'dan canlı online durumunu bindirir (yalnızca
+  /// offline→online yönünde; nearby online'ı yetkilidir). Böylece Gülşah gibi
+  /// çevrimiçi bir sürücü, favori payload'ı bayatsa bile online görünür.
+  NearbyDriver _withLiveStatus(NearbyDriver d, Map<int, NearbyDriver> liveById) {
+    final live = liveById[d.id];
+    if (live == null || d.isOnline || !live.isOnline) return d;
+    return d.copyWith(isOnline: true, availabilityStatus: 'online');
   }
 
   void _switchTab(_SourceTab t) {
