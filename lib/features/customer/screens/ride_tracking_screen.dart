@@ -325,12 +325,30 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     final selected = <String>{};
     const tags = ['Güler yüzlü', 'Temiz araç', 'Güvenli sürüş', 'Zamanında', 'Konforlu'];
     bool busy = false;
+    bool fav = drv?.isFavorite ?? false;
+    bool favBusy = false;
 
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setD) {
+          Future<void> toggleFav() async {
+            if (drv == null || favBusy) return;
+            final next = !fav;
+            setD(() { fav = next; favBusy = true; }); // iyimser
+            try {
+              if (next) {
+                await ref.read(customerRideRepositoryProvider).addFavorite(drv.id);
+              } else {
+                await ref.read(customerRideRepositoryProvider).removeFavorite(drv.id);
+              }
+              setD(() => favBusy = false);
+            } catch (_) {
+              setD(() { fav = !next; favBusy = false; }); // geri al
+            }
+          }
+
           Future<void> submit() async {
             if (stars == 0 || busy) return;
             setD(() => busy = true);
@@ -403,6 +421,26 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),
                   ),
+                  if (drv != null && drv.id > 0) ...[
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: favBusy ? null : toggleFav,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: fav ? const Color(0xFFFB7185) : FerxgoColors.textMid,
+                          side: BorderSide(color: fav ? const Color(0xFFFB7185) : FerxgoColors.line),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: favBusy
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFB7185)))
+                            : Icon(fav ? Icons.favorite : Icons.favorite_border, size: 20),
+                        label: Text(fav ? 'Favorilerinde' : 'Favorilerine ekle',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,

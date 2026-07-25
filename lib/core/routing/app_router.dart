@@ -10,6 +10,8 @@ import '../../features/customer/screens/booking_confirm_screen.dart';
 import '../../features/customer/screens/customer_history_screen.dart';
 import '../../features/customer/screens/customer_map_screen.dart';
 import '../../features/customer/screens/favorites_screen.dart';
+import '../../features/customer/models/ride_history_item.dart';
+import '../../features/customer/screens/ride_detail_screen.dart';
 import '../../features/customer/screens/ride_tracking_screen.dart';
 import '../../features/customer/state/active_ride.dart';
 import '../../features/driver/screens/driver_home_screen.dart';
@@ -28,6 +30,7 @@ class AppRoutes {
   static const driverLogin    = '/driver/login';
   static const customerHome           = '/customer/home';     // ana ekran (harita)
   static const customerHistory        = '/customer/history';
+  static const customerRideDetail     = '/customer/ride-detail';
   static const customerFavorites      = '/customer/favorites';
   static const customerBookDropoff    = '/customer/book/dropoff';
   static const customerBookConfirm    = '/customer/book/confirm';
@@ -126,6 +129,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.driverLogin,         builder: (_, _) => const DriverLoginScreen()),
       GoRoute(path: AppRoutes.customerHome,        builder: (_, _) => const CustomerMapScreen()),
       GoRoute(path: AppRoutes.customerHistory,     builder: (_, _) => const CustomerHistoryScreen()),
+      GoRoute(
+        path: AppRoutes.customerRideDetail,
+        builder: (_, state) => RideDetailScreen(item: state.extra as RideHistoryItem),
+      ),
       GoRoute(path: AppRoutes.customerFavorites,   builder: (_, _) => const FavoritesScreen()),
       GoRoute(path: AppRoutes.customerBookConfirm, builder: (_, _) => const BookingConfirmScreen()),
       GoRoute(

@@ -96,18 +96,12 @@ class _RideTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: () {
-          // Yalnızca DEVAM EDEN yolculuk tıklanınca takip ekranı açılır.
+          // Devam eden yolculuk → takip ekranı; diğerleri → detay ekranı.
           if (item.isActive && item.requestPublicId != null) {
             context.push('${AppRoutes.customerRideBase}/${item.requestPublicId}');
             return;
           }
-          ScaffoldMessenger.of(context)
-            ..clearSnackBars()
-            ..showSnackBar(SnackBar(
-              content: Text('Yolculuk detayı sonraki adımda gelecek (#${item.publicId}).'),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: FerxgoColors.inkMuted,
-            ));
+          context.push(AppRoutes.customerRideDetail, extra: item);
         },
         borderRadius: BorderRadius.circular(14),
         child: Padding(

@@ -16,6 +16,8 @@ class RideHistoryItem {
     required this.totalFare,
     required this.currency,
     required this.driverName,
+    required this.driverId,
+    required this.driverIsFavorite,
     required this.vehicleClass,
     required this.createdAt,
     required this.completedAt,
@@ -37,6 +39,14 @@ class RideHistoryItem {
   final double? totalFare;
   final String? currency;
   final String? driverName;
+
+  /// Sürücü kimliği — favoriye ekle/çıkar için gerekli. Backend history
+  /// payload'ında `driver_id` yoksa null olur (toggle o zaman gizlenir).
+  final int? driverId;
+
+  /// Bu sürücü hâlihazırda favoride mi (backend `driver_is_favorite`).
+  final bool driverIsFavorite;
+
   final String? vehicleClass;
   final DateTime createdAt;
   final DateTime? completedAt;
@@ -82,6 +92,8 @@ class RideHistoryItem {
       totalFare: asDoubleOrNull(json['total_fare']),
       currency: json['currency'] as String?,
       driverName: json['driver_name'] as String?,
+      driverId: asIntOrNull(json['driver_id']),
+      driverIsFavorite: (json['driver_is_favorite'] as bool?) ?? false,
       vehicleClass: json['vehicle_class'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       completedAt: json['completed_at'] != null
