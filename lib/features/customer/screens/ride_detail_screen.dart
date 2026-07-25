@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/location/location_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../customer_ride_repository.dart';
 import '../models/ride_history_item.dart';
@@ -23,7 +24,45 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen> {
   late bool _fav = widget.item.driverIsFavorite;
   bool _favBusy = false;
 
+  /// Sürücü kimliği. History payload'ında `driver_id` yoksa, ride-request
+  /// detayından (showRequest → acceptedDriver) çekilir.
+  late int? _driverId = widget.item.driverId;
+  late String? _driverName = widget.item.driverName;
+  bool _resolving = false; // driver_id çekiliyor
+
   RideHistoryItem get item => widget.item;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_driverId == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _resolveDriver());
+    }
+  }
+
+  /// Sürücü id'sini ride-request detayından çek (favori toggle için gerekli).
+  Future<void> _resolveDriver() async {
+    final pid = item.requestPublicId ?? item.publicId;
+    if (pid.isEmpty) return;
+    setState(() => _resolving = true);
+    try {
+      final status = await ref
+          .read(customerRideRepositoryProvider)
+          .showRequest(pid, LocationService.defaultCenter);
+      final drv = status.acceptedDriver;
+      if (!mounted) return;
+      setState(() {
+        if (drv != null) {
+          _driverId = drv.id;
+          _driverName ??= drv.fullName.isNotEmpty ? drv.fullName : drv.name;
+          _fav = drv.isFavorite;
+        }
+        _resolving = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _resolving = false);
+    }
+  }
 
   Color get _statusColor {
     if (item.isCompleted) return FerxgoColors.success;
@@ -32,9 +71,28 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen> {
     return FerxgoColors.info;
   }
 
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(
+        content: Text(msg, style: const TextStyle(color: Colors.white)),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: FerxgoColors.inkMuted,
+      ));
+  }
+
   Future<void> _toggleFav() async {
-    final id = item.driverId;
-    if (id == null || _favBusy) return;
+    if (_favBusy || _resolving) return;
+    var id = _driverId;
+    if (id == null) {
+      // Henüz çözülmediyse bir daha dene.
+      await _resolveDriver();
+      id = _driverId;
+    }
+    if (id == null) {
+      _snack('Sürücü bilgisi alınamadı, tekrar dene.');
+      return;
+    }
     final next = !_fav;
     setState(() {
       _fav = next; // iyimser
@@ -140,8 +198,8 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Sürücü + favori toggle
-            if (item.driverName != null)
+            // Sürücü + favori toggle (id history'de yoksa detaydan çekilir)
+            if (_driverName != null)
               _Card(
                 child: Row(
                   children: [
@@ -153,7 +211,7 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen> {
                         shape: BoxShape.circle,
                       ),
                       alignment: Alignment.center,
-                      child: Text(_initials(item.driverName!),
+                      child: Text(_initials(_driverName!),
                           style: const TextStyle(color: FerxgoColors.brand, fontWeight: FontWeight.w800)),
                     ),
                     const SizedBox(width: 12),
@@ -164,7 +222,7 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen> {
                           const Text('Sürücü',
                               style: TextStyle(color: FerxgoColors.textLow, fontSize: 11)),
                           const SizedBox(height: 2),
-                          Text(item.driverName!,
+                          Text(_driverName!,
                               style: const TextStyle(
                                   color: FerxgoColors.textHigh,
                                   fontSize: 15,
@@ -173,10 +231,7 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen> {
                         ],
                       ),
                     ),
-                    if (item.driverId != null)
-                      _favButton()
-                    else
-                      const SizedBox.shrink(),
+                    _favButton(),
                   ],
                 ),
               ),
@@ -187,15 +242,16 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen> {
   }
 
   Widget _favButton() {
+    final loading = _favBusy || _resolving;
     return OutlinedButton.icon(
-      onPressed: _favBusy ? null : _toggleFav,
+      onPressed: loading ? null : _toggleFav,
       style: OutlinedButton.styleFrom(
         foregroundColor: _fav ? _pink : FerxgoColors.textMid,
         side: BorderSide(color: _fav ? _pink : FerxgoColors.line),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
-      icon: _favBusy
+      icon: loading
           ? const SizedBox(
               width: 16, height: 16,
               child: CircularProgressIndicator(strokeWidth: 2, color: _pink))
