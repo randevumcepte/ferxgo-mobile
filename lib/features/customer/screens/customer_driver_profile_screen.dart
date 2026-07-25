@@ -49,7 +49,6 @@ class _CustomerDriverProfileScreenState extends ConsumerState<CustomerDriverProf
             final rating = (d['rating'] as num?)?.toDouble() ?? 0;
             final ratingCount = (d['rating_count'] as num?)?.toInt() ?? 0;
             final totalRides = (d['total_rides'] as num?)?.toInt() ?? 0;
-            final vehicle = (d['vehicle'] as Map?)?.cast<String, dynamic>();
             final reviews = (d['reviews'] as List? ?? const []).whereType<Map>().toList();
 
             return ListView(
@@ -71,7 +70,7 @@ class _CustomerDriverProfileScreenState extends ConsumerState<CustomerDriverProf
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text((d['name'] as String?) ?? 'Sürücü',
+                          Text((d['short_name'] as String?) ?? widget.driverName ?? 'Sürücü',
                             style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 20, fontWeight: FontWeight.w800)),
                           const SizedBox(height: 4),
                           Row(
@@ -90,33 +89,6 @@ class _CustomerDriverProfileScreenState extends ConsumerState<CustomerDriverProf
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-
-                // Araç
-                if (vehicle != null)
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: FerxgoColors.inkSoft,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: FerxgoColors.line),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.directions_car, color: FerxgoColors.brand, size: 22),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            [
-                              vehicle['brand'], vehicle['model'],
-                              vehicle['year']?.toString(), vehicle['color'],
-                            ].where((e) => e != null && e.toString().isNotEmpty).join(' · '),
-                            style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 14),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 const SizedBox(height: 20),
 
                 Text('Yolcu Yorumları',
@@ -148,6 +120,7 @@ class _ReviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final stars = (data['stars'] as num?)?.toInt() ?? 0;
     final review = data['review'] as String?;
+    final reviewer = (data['reviewer_name'] as String?)?.trim();
     final date = data['completed_at'] is String ? DateTime.tryParse(data['completed_at'] as String) : null;
     final df = DateFormat('d MMM yyyy', 'tr_TR');
 
@@ -164,18 +137,26 @@ class _ReviewCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 1; i <= 5; i++)
-                    Icon(i <= stars ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: FerxgoColors.brand, size: 16),
-                ],
+              Expanded(
+                child: Text(
+                  (reviewer != null && reviewer.isNotEmpty) ? reviewer : 'Yolcu',
+                  style: const TextStyle(
+                      color: FerxgoColors.textHigh, fontSize: 14, fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              const Spacer(),
               if (date != null)
                 Text(df.format(date.toLocal()),
                   style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 1; i <= 5; i++)
+                Icon(i <= stars ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: FerxgoColors.brand, size: 16),
             ],
           ),
           if (review != null && review.trim().isNotEmpty) ...[
