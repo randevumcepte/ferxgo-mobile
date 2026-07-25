@@ -165,7 +165,7 @@ class _FavoriteTile extends StatelessWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: Text(driver.name,
+                      child: Text(driver.displayName,
                         style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w700),
                         overflow: TextOverflow.ellipsis,
                       ),

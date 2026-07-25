@@ -203,7 +203,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(drv.name,
+                        Text(drv.displayName,
                           style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w800, fontSize: 16)),
                         if (drv.vehicleLabel != null && drv.vehicleLabel!.isNotEmpty)
                           Padding(
@@ -381,7 +381,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
                   const Text('Yolculuğun tamamlandı',
                     style: TextStyle(color: FerxgoColors.textHigh, fontSize: 20, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 4),
-                  Text('${drv?.name ?? 'Sürücünü'} nasıldı?',
+                  Text('${drv?.displayName ?? 'Sürücünü'} nasıldı?',
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: FerxgoColors.textMid, fontSize: 14)),
                   const SizedBox(height: 16),
@@ -859,9 +859,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     }
     // accepted
     final drv = s.acceptedDriver;
-    final driverName = drv == null
-        ? 'Sürücü'
-        : (drv.fullName.isNotEmpty ? drv.fullName : drv.name);
+    final driverName = drv?.displayName ?? 'Sürücü';
     final callArg = (publicId: widget.publicId, peerName: driverName);
     return Stack(
       children: [
@@ -956,7 +954,7 @@ class _Pending extends StatelessWidget {
                 : status.isPoolExpanded
                     ? (status.isFavoriteWave ? 'Favori sürücülerine soruldu' : 'Yakındaki sürücülere soruldu')
                     : status.offeredDriver != null
-                        ? 'Teklif gönderildi: ${status.offeredDriver!.name}'
+                        ? 'Teklif gönderildi: ${status.offeredDriver!.displayName}'
                         : 'Sürücü aranıyor…',
             textAlign: TextAlign.center,
             style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 18, fontWeight: FontWeight.w700),
@@ -1159,7 +1157,7 @@ class _Reconfirm extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(driver.fullName.isNotEmpty ? driver.fullName : driver.name,
+                        Text(driver.displayName,
                           style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 16, fontWeight: FontWeight.w800),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1386,7 +1384,7 @@ class _Accepted extends StatelessWidget {
               Marker(
                 point: driver.position,
                 width: 140, height: 62,
-                child: _DriverMapMarker(name: driver.name, etaMin: etaMin),
+                child: _DriverMapMarker(name: driver.displayName, etaMin: etaMin),
               ),
             ]),
           ],
@@ -1403,7 +1401,7 @@ class _Accepted extends StatelessWidget {
           top: 86, right: 14,
           child: PanicButton(
             ridePublicId: publicId,
-            shareDescription: 'Sürücü: ${driver.name}'
+            shareDescription: 'Sürücü: ${driver.displayName}'
                 '${driver.vehicleLabel != null ? ', ${driver.vehicleLabel}' : ''}'
                 '${driver.plate != null ? ' (${driver.plate})' : ''}.',
           ),
@@ -1822,7 +1820,7 @@ class _DriverHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(driver.fullName.isNotEmpty ? driver.fullName : driver.name,
+                Text(driver.displayName,
                   style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 17, fontWeight: FontWeight.w800),
                   overflow: TextOverflow.ellipsis,
                 ),

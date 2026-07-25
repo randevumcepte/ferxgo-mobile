@@ -70,6 +70,18 @@ class NearbyDriver {
   bool get isBusy => availabilityStatus == 'busy';
   bool get isOffline => !isOnline && !isBusy;
 
+  /// Yolcuya gösterilecek maskeli ad: "Ad S." (isim + soyisim baş harfi + nokta).
+  /// Gizlilik — soyisim tam gösterilmez. fullName varsa ondan üretir, yoksa
+  /// zaten kısa gelen [name]'i kullanır.
+  String get displayName {
+    final src = (fullName.trim().isNotEmpty ? fullName : name).trim();
+    if (src.isEmpty) return 'Sürücü';
+    final parts = src.split(RegExp(r'\s+'));
+    if (parts.length < 2) return src;
+    final initial = parts.last.substring(0, 1).toUpperCase();
+    return '${parts.first} $initial.';
+  }
+
   /// Rozet metni (favori durum göstergesi)
   String get statusLabel => isOnline
       ? 'Müsait'

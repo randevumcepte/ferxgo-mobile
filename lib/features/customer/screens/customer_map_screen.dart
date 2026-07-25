@@ -601,7 +601,7 @@ class _DriverPinIcon extends StatelessWidget {
             boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 2))],
           ),
           child: Text(
-            driver.name.isNotEmpty ? '${driver.name} · ${driver.etaMinutes} dk' : '${driver.etaMinutes} dk',
+            driver.name.isNotEmpty ? '${driver.displayName} · ${driver.etaMinutes} dk' : '${driver.etaMinutes} dk',
             maxLines: 1, overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800),
           ),

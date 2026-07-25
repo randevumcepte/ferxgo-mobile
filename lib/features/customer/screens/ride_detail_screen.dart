@@ -54,7 +54,7 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen> {
       setState(() {
         if (drv != null) {
           _driverId = drv.id;
-          _driverName ??= drv.fullName.isNotEmpty ? drv.fullName : drv.name;
+          _driverName ??= drv.displayName;
           _fav = drv.isFavorite;
         }
         _resolving = false;

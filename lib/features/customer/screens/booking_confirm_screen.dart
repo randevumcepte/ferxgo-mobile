@@ -414,7 +414,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                     ? () => setState(() { _selectedDriverId = d.id; _selectAll = false; })
                     : null,
                 onInspect: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => CustomerDriverProfileScreen(driverId: d.id, driverName: d.name),
+                  builder: (_) => CustomerDriverProfileScreen(driverId: d.id, driverName: d.displayName),
                 )),
               ),
             )),
@@ -660,7 +660,7 @@ class _FavoriteRadio extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Flexible(child: Text(driver.name,
+                          Flexible(child: Text(driver.displayName,
                             style: const TextStyle(color: FerxgoColors.textHigh, fontWeight: FontWeight.w700),
                             overflow: TextOverflow.ellipsis,
                           )),
