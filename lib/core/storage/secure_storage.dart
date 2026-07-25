@@ -14,6 +14,7 @@ class SecureStorage {
   static const String kAuthUserJson  = 'ferxgo.auth.user';
   static const String kDeviceId      = 'ferxgo.device.id';
   static const String kAppMode       = 'ferxgo.app.mode'; // customer | driver
+  static const String kActiveRide    = 'ferxgo.ride.active'; // devam eden yolculuk publicId
 
   Future<String?> read(String key) => _storage.read(key: key);
   Future<void> write(String key, String value) => _storage.write(key: key, value: value);

@@ -21,6 +21,7 @@ import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
 import '../models/place.dart';
 import '../models/ride_status.dart';
+import '../state/active_ride.dart';
 import '../state/booking_draft.dart';
 
 /// Talep sonrası ana tracking ekranı.
@@ -97,6 +98,14 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
         _status = s;
         _error = null;
       });
+      // Aktif yolculuğu sakla / sonlanınca temizle — uygulama kapatılıp
+      // açıldığında yolcu bu ekrana geri dönebilsin.
+      final activeRide = ref.read(activeRideControllerProvider.notifier);
+      if (s.isTerminal || s.status == 'completed') {
+        activeRide.clear();
+      } else {
+        activeRide.set(widget.publicId);
+      }
       // Accepted'a geçince mesaj polling'i de başlat
       if (s.isAccepted && _messageTimer == null) {
         _pollMessages();
@@ -578,6 +587,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     setState(() => _busyAction = true);
     try {
       await ref.read(customerRideRepositoryProvider).cancelRequest(widget.publicId, LocationService.defaultCenter);
+      await ref.read(activeRideControllerProvider.notifier).clear();
       if (!mounted) return;
       context.go(AppRoutes.customerHome);
     } on ApiException catch (e) {
@@ -733,10 +743,16 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
       appBar: AppBar(
         backgroundColor: FerxgoColors.ink,
         title: const Text('Yolculuk'),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => context.go(AppRoutes.customerHome),
-        ),
+        automaticallyImplyLeading: false,
+        // Aktif yolculuk sürerken çıkış (X) yok — yolcu ekrandan kazara
+        // çıkamasın; uygulama kapansa bile bu ekran geri açılır. Yalnızca
+        // yolculuk sonlandığında (iptal/red) kapatma butonu görünür.
+        leading: ((s?.isTerminal ?? false) || s?.status == 'completed')
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => context.go(AppRoutes.customerHome),
+              )
+            : null,
       ),
       body: SafeArea(
         child: s == null

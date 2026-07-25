@@ -11,6 +11,7 @@ import '../../features/customer/screens/customer_history_screen.dart';
 import '../../features/customer/screens/customer_map_screen.dart';
 import '../../features/customer/screens/favorites_screen.dart';
 import '../../features/customer/screens/ride_tracking_screen.dart';
+import '../../features/customer/state/active_ride.dart';
 import '../../features/driver/screens/driver_home_screen.dart';
 import '../../features/mode_select/mode_select_screen.dart';
 import '../../features/profile/profile_screen.dart';
@@ -55,9 +56,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
       final mode = ref.read(appModeControllerProvider);
+      final activeRide = ref.read(activeRideControllerProvider);
 
       // Henüz okumadık — splash'da dur
-      if (auth.isLoading || mode.isLoading) {
+      if (auth.isLoading || mode.isLoading || activeRide.isLoading) {
         return state.matchedLocation == AppRoutes.splash ? null : AppRoutes.splash;
       }
 
@@ -67,8 +69,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Login olmuş kullanıcı
       if (session != null) {
-        final target = session.user.isDriver ? AppRoutes.driverHome : AppRoutes.customerHome;
-        // Halen splash/login ekranlarındaysa home'a fırlat
+        // Yolcuda devam eden bir yolculuk varsa (uygulama kapatılıp açılsa bile)
+        // home yerine doğrudan tracking ekranına dön.
+        final ride = activeRide.value;
+        final target = session.user.isDriver
+            ? AppRoutes.driverHome
+            : (ride != null && ride.isNotEmpty
+                ? '${AppRoutes.customerRideBase}/$ride'
+                : AppRoutes.customerHome);
+        // Halen splash/login ekranlarındaysa hedefe fırlat
         const authPages = {
           AppRoutes.splash,
           AppRoutes.modeSelect,
@@ -136,6 +145,7 @@ class _RouterRefresh extends ChangeNotifier {
   _RouterRefresh(this._ref) {
     _ref.listen(authControllerProvider, (_, _) => notifyListeners());
     _ref.listen(appModeControllerProvider, (_, _) => notifyListeners());
+    _ref.listen(activeRideControllerProvider, (_, _) => notifyListeners());
   }
   final Ref _ref;
 }
