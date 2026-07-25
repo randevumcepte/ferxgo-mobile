@@ -9,6 +9,7 @@ import '../../core/routing/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/auth_repository.dart';
 import '../driver/driver_repository.dart';
+import '../driver/screens/driver_history_screen.dart';
 import '../payment/payment_screen.dart';
 import 'account_screens.dart';
 
@@ -242,7 +243,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   icon: Icons.receipt_long_outlined,
                   label: 'Yolculuklar',
                   onTap: isDriver
-                      ? () => _soon('Sürücü yolculuk geçmişi yakında.')
+                      ? () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const DriverHistoryScreen()))
                       : () => context.push(AppRoutes.customerHistory),
                 ),
               ],

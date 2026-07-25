@@ -102,11 +102,79 @@ class DriverRepository {
     final res = await _api.postJson('/driver/active/message', body: {'body': body});
     return RideMessage.fromJson((res['message'] as Map).cast<String, dynamic>());
   }
+
+  /// Sürücünün yaptığı yolculuklar (tamamlanan + iptal), en yenisi üstte.
+  Future<DriverHistory> history({int limit = 30}) async {
+    final res = await _api.getJson('/driver/history', query: {'limit': limit});
+    final items = (res['items'] as List? ?? const [])
+        .whereType<Map>()
+        .map((m) => DriverRideHistoryItem.fromJson(Map<String, dynamic>.from(m)))
+        .toList(growable: false);
+    return DriverHistory(
+      items: items,
+      completedTotal: (res['completed_total'] as num?)?.toInt() ?? 0,
+    );
+  }
 }
 
 final driverRepositoryProvider = Provider<DriverRepository>((ref) {
   return DriverRepository(ref.watch(apiClientProvider));
 });
+
+/// Sürücü yolculuk geçmişi (özet + kalemler).
+class DriverHistory {
+  const DriverHistory({required this.items, required this.completedTotal});
+  final List<DriverRideHistoryItem> items;
+  final int completedTotal;
+}
+
+class DriverRideHistoryItem {
+  const DriverRideHistoryItem({
+    required this.publicId,
+    required this.status,
+    required this.isActive,
+    this.pickup,
+    this.dropoff,
+    this.distanceKm,
+    this.durationMinutes,
+    this.totalFare,
+    this.currency,
+    this.customerName,
+    this.myRating,
+    this.completedAt,
+    this.createdAt,
+  });
+
+  final String publicId;
+  final String status;
+  final bool isActive;
+  final String? pickup;
+  final String? dropoff;
+  final double? distanceKm;
+  final int? durationMinutes;
+  final double? totalFare;
+  final String? currency;
+  final String? customerName;
+  final int? myRating;
+  final DateTime? completedAt;
+  final DateTime? createdAt;
+
+  static DriverRideHistoryItem fromJson(Map<String, dynamic> j) => DriverRideHistoryItem(
+        publicId: (j['public_id'] as String?) ?? '',
+        status: (j['status'] as String?) ?? '',
+        isActive: j['is_active'] == true,
+        pickup: j['pickup_address'] as String?,
+        dropoff: j['dropoff_address'] as String?,
+        distanceKm: (j['distance_km'] as num?)?.toDouble(),
+        durationMinutes: (j['duration_minutes'] as num?)?.toInt(),
+        totalFare: (j['total_fare'] as num?)?.toDouble(),
+        currency: j['currency'] as String?,
+        customerName: j['customer_name'] as String?,
+        myRating: (j['my_rating'] as num?)?.toInt(),
+        completedAt: j['completed_at'] is String ? DateTime.tryParse(j['completed_at'] as String) : null,
+        createdAt: j['created_at'] is String ? DateTime.tryParse(j['created_at'] as String) : null,
+      );
+}
 
 /// Sürücünün kendi değerlendirmeleri.
 class DriverReviews {
