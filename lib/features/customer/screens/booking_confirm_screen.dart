@@ -16,6 +16,7 @@ import '../models/nearby_driver.dart';
 import '../models/vehicle_class.dart';
 import '../state/booking_draft.dart';
 import '../widgets/driver_status_badge.dart';
+import 'customer_driver_profile_screen.dart';
 
 /// Teklif kaynağı sekmeleri (araç sınıfı yerine): Tümü / Favorilerim / Havuz / Kadın.
 enum _SourceTab { all, favorites, pool, women }
@@ -400,6 +401,9 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                 onTap: d.isOnline
                     ? () => setState(() { _selectedDriverId = d.id; _selectAll = false; })
                     : null,
+                onInspect: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => CustomerDriverProfileScreen(driverId: d.id, driverName: d.name),
+                )),
               ),
             )),
       ],
@@ -604,10 +608,11 @@ class _RouteCard extends StatelessWidget {
 
 /// Favori sürücü seçim satırı — canlı durum rozeti; sadece müsait olan seçilebilir.
 class _FavoriteRadio extends StatelessWidget {
-  const _FavoriteRadio({required this.driver, required this.selected, required this.onTap});
+  const _FavoriteRadio({required this.driver, required this.selected, required this.onTap, this.onInspect});
   final NearbyDriver driver;
   final bool selected;
   final VoidCallback? onTap; // null → müsait değil, seçilemez
+  final VoidCallback? onInspect; // ⓘ incele → sürücü profili + yorumlar
 
   @override
   Widget build(BuildContext context) {
@@ -671,6 +676,13 @@ class _FavoriteRadio extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onInspect != null)
+                  IconButton(
+                    onPressed: onInspect,
+                    icon: const Icon(Icons.info_outline, color: FerxgoColors.textMid, size: 22),
+                    tooltip: 'İncele',
+                    visualDensity: VisualDensity.compact,
+                  ),
               ],
             ),
           ),
