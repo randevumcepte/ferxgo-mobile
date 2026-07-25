@@ -16,6 +16,20 @@ class DriverRepository {
     return DriverState.fromJson(res);
   }
 
+  /// Sürücünün kendi hakkındaki yolcu değerlendirmeleri (puan + yorum) + ortalama.
+  Future<DriverReviews> reviews() async {
+    final res = await _api.getJson('/driver/reviews');
+    final list = (res['reviews'] as List? ?? const [])
+        .whereType<Map>()
+        .map((m) => DriverReview.fromJson(Map<String, dynamic>.from(m)))
+        .toList(growable: false);
+    return DriverReviews(
+      average: (res['average'] as num?)?.toDouble() ?? 0,
+      count: (res['count'] as num?)?.toInt() ?? 0,
+      reviews: list,
+    );
+  }
+
   /// Çevrimiçi / çevrimdışı — konum verilirse birlikte kaydedilir.
   Future<String> setAvailability(String status, {double? lat, double? lng}) async {
     final res = await _api.postJson('/driver/availability', body: {
@@ -93,3 +107,28 @@ class DriverRepository {
 final driverRepositoryProvider = Provider<DriverRepository>((ref) {
   return DriverRepository(ref.watch(apiClientProvider));
 });
+
+/// Sürücünün kendi değerlendirmeleri.
+class DriverReviews {
+  const DriverReviews({required this.average, required this.count, required this.reviews});
+  final double average;
+  final int count;
+  final List<DriverReview> reviews;
+}
+
+class DriverReview {
+  const DriverReview({required this.stars, this.review, this.completedAt, this.pickup, this.dropoff});
+  final int stars;
+  final String? review;
+  final DateTime? completedAt;
+  final String? pickup;
+  final String? dropoff;
+
+  static DriverReview fromJson(Map<String, dynamic> json) => DriverReview(
+        stars: (json['stars'] as num?)?.toInt() ?? 0,
+        review: json['review'] as String?,
+        completedAt: json['completed_at'] is String ? DateTime.tryParse(json['completed_at'] as String) : null,
+        pickup: json['pickup'] as String?,
+        dropoff: json['dropoff'] as String?,
+      );
+}

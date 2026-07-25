@@ -22,6 +22,7 @@ import '../../customer/models/ride_status.dart' show RideMessage;
 import '../../safety/panic_button.dart';
 import '../driver_repository.dart';
 import '../models/driver_state.dart';
+import 'driver_reviews_screen.dart';
 
 /// Sürücü ana ekranı (Faz 2). Tek `/driver/state` endpoint'i 3 sn polling ile
 /// idle / teklif / aktif yolculuk arasında geçiş yapar.
@@ -372,9 +373,14 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         // İstatistikler
         Row(
           children: [
-            Expanded(child: _StatTile(
-              icon: Icons.star, iconColor: FerxgoColors.brand,
-              value: d.rating > 0 ? d.rating.toStringAsFixed(1) : '—', label: 'Puan',
+            Expanded(child: InkWell(
+              onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const DriverReviewsScreen())),
+              borderRadius: BorderRadius.circular(16),
+              child: _StatTile(
+                icon: Icons.star, iconColor: FerxgoColors.brand,
+                value: d.rating > 0 ? d.rating.toStringAsFixed(1) : '—', label: 'Puan ›',
+              ),
             )),
             const SizedBox(width: 12),
             Expanded(child: _StatTile(
