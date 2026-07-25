@@ -32,6 +32,8 @@ class RideStatus {
     this.startedAt,
     this.visualVerifiedAt,
     this.visualVerifyFailedAt,
+    this.completedAt,
+    this.rated = false,
   });
 
   /// pending | pool_expanded | awaiting_customer_reconfirm | accepted | expired | cancelled | exhausted
@@ -73,6 +75,13 @@ class RideStatus {
   final DateTime? startedAt;
   final DateTime? visualVerifiedAt;
   final DateTime? visualVerifyFailedAt;
+
+  /// Yolculuk tamamlandı (sürücü "tamamla" dedi) + yolcu puanladı mı
+  final DateTime? completedAt;
+  final bool rated;
+
+  /// Yolculuk bitti ve yolcu henüz değerlendirmedi → değerlendirme ekranı aç
+  bool get needsRating => completedAt != null && !rated;
 
   /// Yolculuk başladı ve müşteri henüz araç/sürücü görsel doğrulamasını yapmadı.
   bool get needsVisualVerify =>
@@ -136,6 +145,8 @@ class RideStatus {
       startedAt: _parseDate(json['started_at']),
       visualVerifiedAt: _parseDate(json['visual_verified_at']),
       visualVerifyFailedAt: _parseDate(json['visual_verify_failed_at']),
+      completedAt: _parseDate(json['completed_at']),
+      rated: (json['rated'] as bool?) ?? false,
     );
   }
 

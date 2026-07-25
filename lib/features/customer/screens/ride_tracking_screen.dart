@@ -46,6 +46,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
   String? _error;
   bool _busyAction = false;
   bool _visualVerifyShown = false; // araç/sürücü doğrulama modalı bir kez açılsın
+  bool _ratingShown = false; // yolculuk bitince değerlendirme ekranı bir kez açılsın
 
   // Gerçek yol rotası (OSRM) — sürücü → hedef. Sürücü ~200m hareket edince yenilenir.
   List<LatLng>? _routePoints;
@@ -108,6 +109,11 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
       }
       // Gerçek yol rotasını çek/yenile (sürücü hareket edince)
       _maybeRefreshRoute(s);
+      // Yolculuk bitti → sürücü değerlendirme ekranı (bir kez)
+      if (s.needsRating && !_ratingShown) {
+        _ratingShown = true;
+        _showRating(s);
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
@@ -300,6 +306,141 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
         _visualVerifyShown = false; // hata → tekrar denenebilsin
       });
     }
+  }
+
+  /// Yolculuk bitince sürücü değerlendirme ekranı (yıldız + etiket + yorum).
+  Future<void> _showRating(RideStatus s) async {
+    final drv = s.acceptedDriver;
+    final ctrl = TextEditingController();
+    int stars = 0;
+    final selected = <String>{};
+    const tags = ['Güler yüzlü', 'Temiz araç', 'Güvenli sürüş', 'Zamanında', 'Konforlu'];
+    bool busy = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) {
+          Future<void> submit() async {
+            if (stars == 0 || busy) return;
+            setD(() => busy = true);
+            try {
+              final review = [...selected, ctrl.text.trim()].where((e) => e.isNotEmpty).join(' · ');
+              await ref.read(customerRideRepositoryProvider)
+                  .rateRide(widget.publicId, stars, review: review.isEmpty ? null : review);
+              if (ctx.mounted) Navigator.pop(ctx);
+            } catch (_) {
+              setD(() => busy = false);
+            }
+          }
+
+          return AlertDialog(
+            backgroundColor: FerxgoColors.inkSoft,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            contentPadding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    radius: 34,
+                    backgroundColor: FerxgoColors.inkMuted,
+                    backgroundImage: (drv?.avatar != null && drv!.avatar!.isNotEmpty) ? NetworkImage(drv.avatar!) : null,
+                    child: (drv?.avatar == null || drv!.avatar!.isEmpty)
+                        ? const Icon(Icons.person, color: FerxgoColors.textMid, size: 34) : null,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Yolculuğun tamamlandı',
+                    style: TextStyle(color: FerxgoColors.textHigh, fontSize: 20, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text('${drv?.name ?? 'Sürücünü'} nasıldı?',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: FerxgoColors.textMid, fontSize: 14)),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var i = 1; i <= 5; i++)
+                        IconButton(
+                          onPressed: () => setD(() => stars = i),
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          constraints: const BoxConstraints(),
+                          icon: Icon(i <= stars ? Icons.star_rounded : Icons.star_outline_rounded,
+                            color: FerxgoColors.brand, size: 42),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (stars > 0)
+                    Wrap(
+                      spacing: 8, runSpacing: 8, alignment: WrapAlignment.center,
+                      children: [
+                        for (final t in tags)
+                          _ratingTag(t, selected.contains(t), () => setD(() {
+                            selected.contains(t) ? selected.remove(t) : selected.add(t);
+                          })),
+                      ],
+                    ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: ctrl,
+                    maxLines: 2,
+                    style: const TextStyle(color: FerxgoColors.textHigh),
+                    decoration: InputDecoration(
+                      hintText: 'Yorumun (opsiyonel)',
+                      hintStyle: const TextStyle(color: FerxgoColors.textLow),
+                      filled: true, fillColor: FerxgoColors.ink,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: FerxgoColors.brand, foregroundColor: Colors.black,
+                        disabledBackgroundColor: FerxgoColors.inkMuted, disabledForegroundColor: FerxgoColors.textLow,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: (stars == 0 || busy) ? null : submit,
+                      child: busy
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.black))
+                          : const Text('Gönder', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: busy ? null : () => Navigator.pop(ctx),
+                    child: const Text('Şimdilik atla', style: TextStyle(color: FerxgoColors.textLow)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    // Değerlendirme sonrası (gönder ya da atla) → ana ekrana dön
+    if (mounted) context.go(AppRoutes.customerHome);
+  }
+
+  Widget _ratingTag(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? FerxgoColors.brand.withValues(alpha: 0.18) : FerxgoColors.ink,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? FerxgoColors.brand : FerxgoColors.line),
+        ),
+        child: Text(label,
+          style: TextStyle(
+            color: selected ? FerxgoColors.brand : FerxgoColors.textMid,
+            fontSize: 12.5, fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          )),
+      ),
+    );
   }
 
   Future<void> _pollMessages() async {

@@ -228,6 +228,14 @@ class CustomerRideRepository {
     return _api.postJson('/customer/ride-requests/$publicId/confirm');
   }
 
+  /// Yolculuk bitince sürücüyü puanla (1-5 yıldız + opsiyonel yorum).
+  Future<void> rateRide(String publicId, int stars, {String? review}) async {
+    await _api.postJson('/customer/ride-requests/$publicId/rate', body: {
+      'stars': stars,
+      if (review != null && review.trim().isNotEmpty) 'review': review.trim(),
+    });
+  }
+
   /// Faz 6 — görsel doğrulama: yolculuk başladıktan sonra müşteri
   /// "araç/sürücü doğru mu?" cevabı verir. match=false → güvenlik olayı açılır.
   /// Dönen map: { ok, verified, message, incident_id?, status }.
