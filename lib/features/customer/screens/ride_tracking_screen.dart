@@ -1396,9 +1396,11 @@ class _Accepted extends StatelessWidget {
               ? _ProgressStrip(etaMin: etaMin, remainingKm: distKm, progress: progress)
               : _StatusStrip(color: stColor, title: stTitle, subtitle: stSub, icon: stIcon),
         ),
-        // Acil yardım (panik) butonu — durum şeridinin altında sağda
+        // Acil yardım (panik) butonu — üst şeridin ALTINDA sağda.
+        // Yolculuk başlayınca üst kart (ilerleme) uzadığı için butonu aşağı al;
+        // aksi halde kartla üst üste binip dokunması zorlaşıyordu.
         Positioned(
-          top: 86, right: 14,
+          top: started ? 162 : 86, right: 14,
           child: PanicButton(
             ridePublicId: publicId,
             shareDescription: 'Sürücü: ${driver.displayName}'
