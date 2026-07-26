@@ -776,6 +776,12 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
   Widget build(BuildContext context) {
     final s = _status;
 
+    // Panik butonu — Scaffold'un floatingActionButton overlay'inde: body'deki
+    // hiçbir katman (harita, alt sheet vs.) tap'ini engelleyemez, her zaman
+    // dokunulur. Yalnızca eşleşmiş/aktif yolculukta görünür.
+    final panicDriver =
+        (s != null && s.isAccepted) ? s.acceptedDriver : null;
+
     return Scaffold(
       backgroundColor: FerxgoColors.ink,
       appBar: AppBar(
@@ -792,6 +798,15 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
               )
             : null,
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+      floatingActionButton: panicDriver == null
+          ? null
+          : PanicButton(
+              ridePublicId: widget.publicId,
+              shareDescription: 'Sürücü: ${panicDriver.displayName}'
+                  '${panicDriver.vehicleLabel != null ? ', ${panicDriver.vehicleLabel}' : ''}'
+                  '${panicDriver.plate != null ? ' (${panicDriver.plate})' : ''}.',
+            ),
       body: SafeArea(
         child: s == null
             ? const Center(child: CircularProgressIndicator(color: FerxgoColors.brand))
@@ -1450,19 +1465,6 @@ class _Accepted extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
-
-        // Acil yardım (panik) butonu — Stack'in EN ÜST (son) child'ı: alt sheet
-        // dahil hiçbir katman tap'ini engelleyemez. Yolculuk başlayınca üst kart
-        // uzadığı için butonu aşağı al (kartla üst üste binmesin).
-        Positioned(
-          top: started ? 162 : 86, right: 14,
-          child: PanicButton(
-            ridePublicId: publicId,
-            shareDescription: 'Sürücü: ${driver.displayName}'
-                '${driver.vehicleLabel != null ? ', ${driver.vehicleLabel}' : ''}'
-                '${driver.plate != null ? ' (${driver.plate})' : ''}.',
           ),
         ),
       ],
