@@ -1396,19 +1396,6 @@ class _Accepted extends StatelessWidget {
               ? _ProgressStrip(etaMin: etaMin, remainingKm: distKm, progress: progress)
               : _StatusStrip(color: stColor, title: stTitle, subtitle: stSub, icon: stIcon),
         ),
-        // Acil yardım (panik) butonu — üst şeridin ALTINDA sağda.
-        // Yolculuk başlayınca üst kart (ilerleme) uzadığı için butonu aşağı al;
-        // aksi halde kartla üst üste binip dokunması zorlaşıyordu.
-        Positioned(
-          top: started ? 162 : 86, right: 14,
-          child: PanicButton(
-            ridePublicId: publicId,
-            shareDescription: 'Sürücü: ${driver.displayName}'
-                '${driver.vehicleLabel != null ? ', ${driver.vehicleLabel}' : ''}'
-                '${driver.plate != null ? ' (${driver.plate})' : ''}.',
-          ),
-        ),
-
         // Alt panel
         DraggableScrollableSheet(
           initialChildSize: chatOpen ? 0.7 : 0.40,
@@ -1463,6 +1450,19 @@ class _Accepted extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+
+        // Acil yardım (panik) butonu — Stack'in EN ÜST (son) child'ı: alt sheet
+        // dahil hiçbir katman tap'ini engelleyemez. Yolculuk başlayınca üst kart
+        // uzadığı için butonu aşağı al (kartla üst üste binmesin).
+        Positioned(
+          top: started ? 162 : 86, right: 14,
+          child: PanicButton(
+            ridePublicId: publicId,
+            shareDescription: 'Sürücü: ${driver.displayName}'
+                '${driver.vehicleLabel != null ? ', ${driver.vehicleLabel}' : ''}'
+                '${driver.plate != null ? ' (${driver.plate})' : ''}.',
           ),
         ),
       ],
