@@ -51,7 +51,7 @@ dependencies:
   share_plus: ^10.1.4
 
   # WebRTC sesli görüşme (sürücü ↔ yolcu uygulama-içi arama)
-  flutter_webrtc: ^0.12.5
+  flutter_webrtc: ^1.5.2
   permission_handler: ^11.3.1
 
   # Sesli uyarı (sürücüye teklif gelince cihaz bildirim/alarm sesi)
@@ -69,6 +69,18 @@ dev_dependencies:
   riverpod_generator: ^2.6.3
   custom_lint: ^0.7.0
   riverpod_lint: ^2.6.3
+
+  # Uygulama ikonu üretimi (android mipmap + ios AppIcon)
+  flutter_launcher_icons: ^0.14.1
+
+# Uygulama ikonu — assets/icon/app_icon.png kaynağından tüm boyutlar üretilir.
+# iOS şeffaflık kabul etmediği için alfa kaldırılıp koyu marka zeminine düzleştirilir.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true
+  background_color_ios: "#0B0B0F"
 
 flutter:
   uses-material-design: true
