@@ -88,6 +88,53 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  Future<void> _deleteAccount() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: FerxgoColors.inkSoft,
+        title: const Text('Hesabını sil?', style: TextStyle(color: FerxgoColors.textHigh)),
+        content: const Text(
+          'Hesabın ve kişisel bilgilerin (ad, telefon, kayıtlı yerler, favoriler) '
+          'kalıcı olarak silinir. Bu işlem geri alınamaz.\n\n'
+          'Tamamlanmış yolculuk kayıtları yasal zorunluluk gereği anonim olarak saklanır.',
+          style: TextStyle(color: FerxgoColors.textMid),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Vazgeç')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: FerxgoColors.danger, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hesabımı sil'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    // Silme sırasında engelleyici yükleme göstergesi
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: FerxgoColors.brand)),
+    );
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      // Başarı: auth state temizlendi, yönlendirme router redirect ile olur.
+      if (mounted) Navigator.of(context, rootNavigator: true).pop(); // yükleyiciyi kapat
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // yükleyiciyi kapat
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(const SnackBar(
+          content: Text('Hesap silinemedi. Lütfen tekrar dene veya destekle iletişime geç.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: FerxgoColors.danger,
+        ));
+    }
+  }
+
   Future<void> _openUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
@@ -315,6 +362,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 side: const BorderSide(color: FerxgoColors.danger),
                 minimumSize: const Size(double.infinity, 52),
               ),
+            ),
+            const SizedBox(height: 12),
+            // Hesap silme — Apple 5.1.1(v) & Google Play zorunlu (uygulama içinden)
+            TextButton.icon(
+              onPressed: _deleteAccount,
+              icon: const Icon(Icons.delete_forever_outlined, color: FerxgoColors.textLow, size: 20),
+              label: const Text('Hesabımı sil', style: TextStyle(color: FerxgoColors.textLow)),
+              style: TextButton.styleFrom(minimumSize: const Size(double.infinity, 44)),
             ),
             const SizedBox(height: 16),
             Center(

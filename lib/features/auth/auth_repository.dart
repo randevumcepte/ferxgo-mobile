@@ -117,6 +117,15 @@ class AuthRepository {
     await _ref.read(authControllerProvider.notifier).clear();
   }
 
+  /// Hesabı kalıcı sil (Apple 5.1.1(v) & Google Play zorunlu — uygulama içinden).
+  /// Backend kişisel veriyi anonimleştirir ve token'ları iptal eder; ardından
+  /// lokal state temizlenir. Backend hatasında lokal takılı kalmaması için istisna
+  /// yukarı fırlatılır ki UI kullanıcıya bilgi verebilsin.
+  Future<void> deleteAccount() async {
+    await _api.deleteJson('/auth/account');
+    await _ref.read(authControllerProvider.notifier).clear();
+  }
+
   // ─── Helpers ──────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _deviceMeta() async {
