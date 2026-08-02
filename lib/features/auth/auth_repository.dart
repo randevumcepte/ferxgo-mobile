@@ -51,13 +51,14 @@ class AuthRepository {
 
   // ─── Sürücü login ─────────────────────────────────────────
 
+  /// [login] e-posta VEYA telefon numarası olabilir.
   Future<AuthSession> driverLogin({
-    required String email,
+    required String login,
     required String password,
   }) async {
     final meta = await _deviceMeta();
     final res = await _api.postJson('/auth/driver/login', body: {
-      'email': email,
+      'login': login,
       'password': password,
       ...meta,
     });
@@ -65,6 +66,33 @@ class AuthRepository {
     await _ref.read(authControllerProvider.notifier).set(session);
     unawaited(_ref.read(pushServiceProvider).syncToken());
     return session;
+  }
+
+  // ─── Sürücü şifre sıfırlama (SMS ile) ─────────────────────
+
+  /// Sürücünün kayıtlı telefonuna SMS ile 6 haneli kod gönderir.
+  /// `{ ok, message, dev_code? }`
+  Future<Map<String, dynamic>> driverForgotPassword(String phone) async {
+    final deviceId = await _ref.read(deviceIdServiceProvider).ensure();
+    return _api.postJson('/auth/driver/forgot-password', body: {
+      'phone': phone,
+      'device_id': deviceId,
+    });
+  }
+
+  /// SMS kodunu doğrulayıp yeni şifreyi belirler. `{ ok, message }`
+  Future<Map<String, dynamic>> driverResetPassword({
+    required String phone,
+    required String code,
+    required String newPassword,
+  }) async {
+    final deviceId = await _ref.read(deviceIdServiceProvider).ensure();
+    return _api.postJson('/auth/driver/reset-password', body: {
+      'phone': phone,
+      'code': code,
+      'password': newPassword,
+      'device_id': deviceId,
+    });
   }
 
   // ─── /me & /logout ────────────────────────────────────────

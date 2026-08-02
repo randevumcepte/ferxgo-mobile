@@ -570,9 +570,9 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
                         Icon(Icons.info_outline, color: FerxgoColors.warning, size: 18),
                         SizedBox(width: 8),
                         Expanded(child: Text(
-                          'Eşleşme sonrası iptal, iptal cezasına tabidir. Ceza, kayıtlı kredi kartından '
-                          'otomatik tahsil edilir; çekilemezse borç bakiyene eklenir ve ödenene kadar '
-                          'yeni yolculuk oluşturamazsın. Gerçekten gerekmedikçe iptal etmeni önermeyiz.',
+                          'Sürücü seni almak için yola çıktı. Sık sık son anda iptal etmek '
+                          'güven puanını düşürür ve sürücülerin sana teklif vermesini zorlaştırır. '
+                          'Gerçekten gerekmedikçe iptal etmeni önermeyiz.',
                           style: TextStyle(color: FerxgoColors.textMid, fontSize: 12, height: 1.4),
                         )),
                       ],

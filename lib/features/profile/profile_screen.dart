@@ -10,7 +10,6 @@ import '../../core/theme/app_colors.dart';
 import '../auth/auth_repository.dart';
 import '../driver/driver_repository.dart';
 import '../driver/screens/driver_history_screen.dart';
-import '../payment/payment_screen.dart';
 import 'account_screens.dart';
 
 /// Profil / hesabım — her iki rol için.
@@ -223,20 +222,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ── Hızlı butonlar: Destek · Ödeme · Yolculuklar ──────────────
+            // ── Hızlı butonlar: Destek · Yolculuklar ──────────────────────
             Row(
               children: [
                 _QuickAction(
                   icon: Icons.help_outline,
                   label: 'Destek',
                   onTap: () => _openUrl('https://ferxgo.com/iletisim'),
-                ),
-                const SizedBox(width: 12),
-                _QuickAction(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'Ödeme',
-                  onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const PaymentScreen())),
                 ),
                 const SizedBox(width: 12),
                 _QuickAction(

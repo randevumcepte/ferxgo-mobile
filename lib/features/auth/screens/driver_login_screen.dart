@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
@@ -7,6 +8,7 @@ import '../../../shared/widgets/error_banner.dart';
 import '../../../shared/widgets/ferxgo_logo.dart';
 import '../../app_mode/app_mode.dart';
 import '../auth_repository.dart';
+import 'driver_forgot_password_screen.dart';
 
 class DriverLoginScreen extends ConsumerStatefulWidget {
   const DriverLoginScreen({super.key});
@@ -35,7 +37,7 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
     setState(() { _busy = true; _error = null; });
     try {
       await ref.read(authRepositoryProvider).driverLogin(
-        email: _emailCtrl.text.trim(),
+        login: _emailCtrl.text.trim(),
         password: _passCtrl.text,
       );
       // Router otomatik /driver/home'a atar.
@@ -45,6 +47,21 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
       setState(() => _error = 'Beklenmedik bir hata oluştu.');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Web sitesindeki sürücü başvuru ("Sürücü Ol") sayfasını tarayıcıda açar.
+  Future<void> _openDriverSignup() async {
+    final uri = Uri.parse('https://ferxgo.com/surucu-olun');
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(const SnackBar(
+          content: Text('Sayfa açılamadı: ferxgo.com/surucu-olun'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: FerxgoColors.inkMuted,
+        ));
     }
   }
 
@@ -109,18 +126,24 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
+                  keyboardType: TextInputType.text,
                   textInputAction: TextInputAction.next,
-                  autofillHints: const [AutofillHints.email],
+                  autofillHints: const [AutofillHints.username],
                   style: const TextStyle(color: FerxgoColors.textHigh),
                   decoration: const InputDecoration(
-                    hintText: 'e-posta',
-                    prefixIcon: Icon(Icons.alternate_email, color: FerxgoColors.textLow),
+                    hintText: 'E-posta veya telefon',
+                    prefixIcon: Icon(Icons.person_outline, color: FerxgoColors.textLow),
                   ),
                   validator: (v) {
                     final s = (v ?? '').trim();
-                    if (s.isEmpty) return 'E-posta gerekli';
-                    if (!s.contains('@') || !s.contains('.')) return 'Geçerli bir e-posta gir';
+                    if (s.isEmpty) return 'E-posta veya telefon gerekli';
+                    final isEmail = s.contains('@');
+                    final digits = s.replaceAll(RegExp(r'\D'), '');
+                    if (isEmail) {
+                      if (!s.contains('.')) return 'Geçerli bir e-posta gir';
+                    } else if (digits.length < 10) {
+                      return 'Geçerli bir e-posta veya telefon gir';
+                    }
                     return null;
                   },
                 ),
@@ -148,7 +171,23 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                   },
                   onFieldSubmitted: (_) => _login(),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const DriverForgotPasswordScreen()),
+                            ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: FerxgoColors.brand,
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    ),
+                    child: const Text('Şifremi unuttum'),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 if (_error != null) ErrorBanner(message: _error!, onClose: () => setState(() => _error = null)),
                 const Spacer(),
                 FilledButton(
@@ -160,15 +199,7 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                 const SizedBox(height: 12),
                 Center(
                   child: TextButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context)
-                        ..clearSnackBars()
-                        ..showSnackBar(const SnackBar(
-                          content: Text('Başvuru için web sitemizdeki "Sürücü Olun" sayfasını kullan.'),
-                          behavior: SnackBarBehavior.floating,
-                          backgroundColor: FerxgoColors.inkMuted,
-                        ));
-                    },
+                    onPressed: _openDriverSignup,
                     style: TextButton.styleFrom(
                       foregroundColor: FerxgoColors.brand,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
