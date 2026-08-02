@@ -53,6 +53,10 @@
 	<string>Yakındaki sürücüleri görebilmen ve doğru alış noktasını seçebilmen için konumuna ihtiyacımız var.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Sürücü modunda müşterilere yakınlığını gösterebilmek için konum gerekli.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Yolculuk sırasında sürücü veya yolcuyla uygulama içi sesli görüşme yapabilmen için mikrofona erişim gerekli.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Görüntülü görüşme sırasında kameranı kullanabilmen için erişim gerekli.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
