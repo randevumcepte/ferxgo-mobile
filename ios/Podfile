@@ -40,4 +40,22 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
   end
+
+  # ── Apple private API düzeltmesi (App Store reddi: ITMS RPSystemBroadcastPickerView.buttonPressed:) ──
+  # flutter_webrtc'nin ekran paylaşımı kodu, private "buttonPressed:" selector'ını çağırıyor.
+  # Uygulama yalnızca sesli görüşme yaptığından bu ölü koddur; selector string'ini nötrleştirerek
+  # private API adını binary'den çıkarıyoruz (respondsToSelector artık false döner → no-op).
+  webrtc_paths = [
+    File.join(__dir__, '.symlinks/plugins/flutter_webrtc/common/darwin/Classes/FlutterRTCDesktopCapturer.m'),
+    File.join(__dir__, '.symlinks/plugins/flutter_webrtc/ios/Classes/FlutterRTCDesktopCapturer.m'),
+  ]
+  webrtc_paths.each do |path|
+    next unless File.exist?(path)
+    src = File.read(path)
+    if src.include?('@"buttonPressed:"')
+      src = src.gsub('@"buttonPressed:"', '@"__ferxgo_disabled__"')
+      File.write(path, src)
+      puts "✓ flutter_webrtc private API (buttonPressed:) nötrleştirildi: #{File.basename(path)}"
+    end
+  end
 end
