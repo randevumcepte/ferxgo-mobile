@@ -17,6 +17,8 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/error_banner.dart';
 import '../../../shared/widgets/price_stepper.dart';
+import '../../ads/ad_repository.dart';
+import '../../ads/widgets/ad_banner.dart';
 import '../../call/call_overlay.dart';
 import '../../customer/models/ride_status.dart' show RideMessage;
 import '../../safety/panic_button.dart';
@@ -388,6 +390,15 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               value: '${d.totalRides}', label: 'Yolculuk',
             )),
           ],
+        ),
+        const SizedBox(height: 16),
+
+        // Reklam alanı (driver_panel) — gün boyu açık panelde
+        AdBanner(
+          placement: AdPlacements.driverPanel,
+          lat: _myPosition?.latitude,
+          lng: _myPosition?.longitude,
+          margin: EdgeInsets.zero,
         ),
         const SizedBox(height: 16),
 

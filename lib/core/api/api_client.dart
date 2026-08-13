@@ -67,6 +67,8 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     responseType: ResponseType.json,
     headers: {
       HttpHeaders.userAgentHeader: _userAgent(),
+      // Backend olay kayıtlarında cihazı 'app' olarak işaretler (reklam analitiği vb.).
+      'X-Ferxgo-App': '1',
     },
   ));
 

@@ -15,6 +15,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/negotiation.dart';
 import '../../../shared/widgets/error_banner.dart';
 import '../../../shared/widgets/price_stepper.dart';
+import '../../ads/ad_repository.dart';
+import '../../ads/widgets/ad_banner.dart';
 import '../../call/call_overlay.dart';
 import '../../safety/panic_button.dart';
 import '../customer_ride_repository.dart';
@@ -993,6 +995,13 @@ class _Pending extends StatelessWidget {
           ],
 
           const Spacer(),
+          // Reklam (ride_tracking) — sürücü aranırken "esir dikkat" anı.
+          AdBanner(
+            placement: AdPlacements.rideTracking,
+            lat: status.pickupPosition?.latitude,
+            lng: status.pickupPosition?.longitude,
+            margin: const EdgeInsets.only(bottom: 12),
+          ),
           if (error != null) ErrorBanner(message: error!, onClose: onErrorClose),
           const SizedBox(height: 12),
 
