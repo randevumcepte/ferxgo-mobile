@@ -380,7 +380,8 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                                 Expanded(child: _buildSearchResults()),
                               ],
                             )
-                          : Column(
+                          : ListView(
+                              padding: const EdgeInsets.only(bottom: 16),
                               children: [
                                 AdBanner(
                                   placement: AdPlacements.homeBanner,
@@ -388,7 +389,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                                   lng: _center.longitude,
                                   margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                                 ),
-                                Expanded(child: _buildHomeHint()),
+                                _buildHomeHint(),
                               ],
                             ),
                     ),
@@ -536,33 +537,37 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   }
 
   /// Ana ekran alt paneli — sürücü listesi yok. Sade yönlendirme.
+  /// Kaydırılabilir bir listenin içinde kullanılır; bu yüzden kendi yüksekliğine
+  /// sığar (Center/Expanded YOK — yoksa reklam bannerı ile birlikte taşar).
   Widget _buildHomeHint() {
     if (_driversError != null) {
-      return ListView(padding: const EdgeInsets.all(16), children: [
-        ErrorBanner(message: _driversError ?? 'Bir sorun oldu.', onClose: () => setState(() => _driversError = null)),
-      ]);
-    }
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.local_taxi, color: FerxgoColors.textLow, size: 40),
-            const SizedBox(height: 12),
-            const Text(
-              'Nereye gideceğini yaz, teklifini ver.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: FerxgoColors.textMid, fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Favori sürücün, yakındakiler ya da tümüne teklifini gönderirsin.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12, height: 1.4),
-            ),
-          ],
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: ErrorBanner(
+          message: _driversError ?? 'Bir sorun oldu.',
+          onClose: () => setState(() => _driversError = null),
         ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 16, 28, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.local_taxi, color: FerxgoColors.textLow, size: 40),
+          const SizedBox(height: 12),
+          const Text(
+            'Nereye gideceğini yaz, teklifini ver.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: FerxgoColors.textMid, fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Favori sürücün, yakındakiler ya da tümüne teklifini gönderirsin.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: FerxgoColors.textLow, fontSize: 12, height: 1.4),
+          ),
+        ],
       ),
     );
   }
