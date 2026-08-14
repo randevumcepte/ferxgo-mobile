@@ -626,10 +626,22 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     if (confirm != true) return;
     setState(() => _busyAction = true);
     try {
-      await ref.read(customerRideRepositoryProvider).cancelRequest(widget.publicId, LocationService.defaultCenter);
-      await ref.read(activeRideControllerProvider.notifier).clear();
+      final s = await ref.read(customerRideRepositoryProvider)
+          .cancelRequest(widget.publicId, LocationService.defaultCenter);
       if (!mounted) return;
-      context.go(AppRoutes.customerHome);
+      // Backend gerçekten iptal ettiyse (terminal durum) ana ekrana dön.
+      // Aksi halde sessizce çıkma — durumu güncelle ve kullanıcıyı uyar,
+      // yoksa "iptal ettim" sanır ama talep arka planda aktif kalır.
+      if (s.isTerminal) {
+        await ref.read(activeRideControllerProvider.notifier).clear();
+        if (!mounted) return;
+        context.go(AppRoutes.customerHome);
+      } else {
+        setState(() {
+          _status = s;
+          _error = 'Talep iptal edilemedi, lütfen tekrar dene.';
+        });
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
@@ -774,6 +786,22 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
     context.go(AppRoutes.customerBookConfirm);
   }
 
+  /// Ekrandan çık — yolcu asla burada kilitli kalmasın. Aktif yolculukta talep
+  /// arka planda sürer (iptal edilmez); geçmişteki "takibe dön" ile geri dönülür.
+  void _leaveToHome(RideStatus? s) {
+    final active = s != null && !s.isTerminal && s.status != 'completed';
+    if (active) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(const SnackBar(
+          content: Text('Talebin arka planda sürüyor. Geçmişten "takibe dön" ile geri dönebilirsin.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: FerxgoColors.inkMuted,
+        ));
+    }
+    context.go(AppRoutes.customerHome);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = _status;
@@ -790,15 +818,18 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
         backgroundColor: FerxgoColors.ink,
         title: const Text('Yolculuk'),
         automaticallyImplyLeading: false,
-        // Aktif yolculuk sürerken çıkış (X) yok — yolcu ekrandan kazara
-        // çıkamasın; uygulama kapansa bile bu ekran geri açılır. Yalnızca
-        // yolculuk sonlandığında (iptal/red) kapatma butonu görünür.
-        leading: ((s?.isTerminal ?? false) || s?.status == 'completed')
-            ? IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => context.go(AppRoutes.customerHome),
-              )
-            : null,
+        // Her durumda ana ekrana dönüş var — yolcu ekranda ASLA kilitli kalmasın
+        // (iptal başarısız olsa bile). Aktif yolculukta bu "küçült" gibi çalışır:
+        // talep arka planda sürer, geçmişteki "takibe dön" ile geri dönülebilir.
+        leading: IconButton(
+          icon: Icon(
+            ((s?.isTerminal ?? false) || s?.status == 'completed')
+                ? Icons.close
+                : Icons.arrow_back,
+          ),
+          tooltip: 'Ana ekrana dön',
+          onPressed: () => _leaveToHome(s),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
       floatingActionButton: panicDriver == null
@@ -824,11 +855,14 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
       final canRetry = ref.read(lastDispatchProvider) != null;
       return _Terminal(
         icon: Icons.person_search,
-        title: 'Sürücü kabul etmedi',
-        message: 'Adresin ve teklifin hazır duruyor.\nBaşka bir sürücü seçebilir ya da teklifini tekrar gönderebilirsin.',
+        title: 'Sürücü bulunamadı',
+        message: canRetry
+            ? 'Şu an teklifini kabul eden bir sürücü olmadı.\nAdresin ve teklifin hazır — başka bir sürücü seçebilir ya da tekrar gönderebilirsin.'
+            : 'Şu an teklifini kabul eden bir sürücü olmadı.\nAna ekrandan tekrar deneyebilirsin.',
         ctaText: canRetry ? 'Tekrar dene · başka sürücü' : 'Ana ekrana dön',
         onTap: canRetry ? _backToBooking : () => context.go(AppRoutes.customerHome),
         color: FerxgoColors.warning,
+        // Ana ekrana dön her zaman erişilebilir olsun (baştan yeni talep açabilsin).
         secondaryText: canRetry ? 'Ana ekrana dön' : null,
         onSecondary: canRetry ? () => context.go(AppRoutes.customerHome) : null,
       );
@@ -912,7 +946,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
 // ─────────────────────────────────────────────────────────────
 //  PENDING (arama / kuyruk)
 // ─────────────────────────────────────────────────────────────
-class _Pending extends StatelessWidget {
+class _Pending extends StatefulWidget {
   const _Pending({
     required this.status,
     required this.onCancel,
@@ -929,7 +963,43 @@ class _Pending extends StatelessWidget {
   final VoidCallback onErrorClose;
 
   @override
+  State<_Pending> createState() => _PendingState();
+}
+
+class _PendingState extends State<_Pending> {
+  // Sunucu durumu 2 sn'de bir poll'lenir; sayaç arada 2'şer atlamasın diye
+  // yerel 1 sn'lik ticker ile akıcı geri sayar, her poll'de sunucu değerine senkronlanır.
+  Timer? _ticker;
+  int _seconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _seconds = widget.status.secondsRemaining;
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _seconds <= 0) return;
+      setState(() => _seconds--);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _Pending old) {
+    super.didUpdateWidget(old);
+    // Yeni poll geldiyse (sunucu sayacı değişti) yerel sayacı sunucuya göre düzelt.
+    if (widget.status.secondsRemaining != old.status.secondsRemaining) {
+      _seconds = widget.status.secondsRemaining;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final status = widget.status;
     final neg = status.negotiation;
     final awaitingDecision = status.awaitingCustomerPriceDecision && neg != null;
 
@@ -941,6 +1011,12 @@ class _Pending extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Üst içerik kaydırılabilir — küçük ekranda taşmasın; reklam+butonlar altta sabit.
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -955,7 +1031,7 @@ class _Pending extends StatelessWidget {
                     color: FerxgoColors.brand,
                   ),
                   if (!awaitingDecision)
-                    Text('${status.secondsRemaining}',
+                    Text('$_seconds',
                       style: const TextStyle(color: FerxgoColors.brand, fontSize: 22, fontWeight: FontWeight.w800),
                     )
                   else
@@ -992,9 +1068,22 @@ class _Pending extends StatelessWidget {
           if (awaitingDecision) ...[
             const SizedBox(height: 20),
             _NegotiationCard(neg: neg),
+          ] else ...[
+            // Ortadaki boşluğu anlamlı doldur: rota özeti + kısa bilgilendirme.
+            const SizedBox(height: 22),
+            _RouteSummaryCard(
+              pickup: status.pickupAddress,
+              dropoff: status.dropoffAddress,
+            ),
+            const SizedBox(height: 12),
+            const _SearchReassurance(),
           ],
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
 
-          const Spacer(),
           // Reklam (ride_tracking) — sürücü aranırken "esir dikkat" anı.
           AdBanner(
             placement: AdPlacements.rideTracking,
@@ -1002,12 +1091,12 @@ class _Pending extends StatelessWidget {
             lng: status.pickupPosition?.longitude,
             margin: const EdgeInsets.only(bottom: 12),
           ),
-          if (error != null) ErrorBanner(message: error!, onClose: onErrorClose),
+          if (widget.error != null) ErrorBanner(message: widget.error!, onClose: widget.onErrorClose),
           const SizedBox(height: 12),
 
           if (awaitingDecision) ...[
             FilledButton.icon(
-              onPressed: onAcceptPrice,
+              onPressed: widget.onAcceptPrice,
               icon: const Icon(Icons.check_circle),
               label: Text('Kabul et · ${(neg.driverCounterFare ?? 0).toStringAsFixed(0)} ₺'),
               style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 52)),
@@ -1015,7 +1104,7 @@ class _Pending extends StatelessWidget {
             const SizedBox(height: 8),
             if (neg.hasRoundsLeft)
               OutlinedButton.icon(
-                onPressed: onCounterPrice,
+                onPressed: widget.onCounterPrice,
                 icon: const Icon(Icons.swap_vert),
                 label: const Text('Karşı teklif ver'),
                 style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
@@ -1024,7 +1113,7 @@ class _Pending extends StatelessWidget {
           ],
 
           OutlinedButton.icon(
-            onPressed: onCancel,
+            onPressed: widget.onCancel,
             icon: const Icon(Icons.close, color: FerxgoColors.danger),
             label: const Text('Talebi iptal et', style: TextStyle(color: FerxgoColors.danger)),
             style: OutlinedButton.styleFrom(
@@ -1032,6 +1121,99 @@ class _Pending extends StatelessWidget {
               minimumSize: const Size(double.infinity, 50),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sürücü aranırken rota özeti (nereden → nereye) — ekrandaki boşluğu doldurur
+/// ve yolcuya talebinin doğru bilgiyle gittiğini gösterir.
+class _RouteSummaryCard extends StatelessWidget {
+  const _RouteSummaryCard({this.pickup, this.dropoff});
+  final String? pickup;
+  final String? dropoff;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: FerxgoColors.inkSoft,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: FerxgoColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _point(
+            color: FerxgoColors.brand,
+            label: 'Nereden',
+            value: (pickup != null && pickup!.isNotEmpty) ? pickup! : 'Mevcut konumun',
+          ),
+          // Noktaları birleştiren ince dikey çizgi
+          Container(
+            margin: const EdgeInsets.only(left: 4),
+            width: 2, height: 18,
+            color: FerxgoColors.line,
+          ),
+          _point(
+            color: FerxgoColors.danger,
+            label: 'Nereye',
+            value: (dropoff != null && dropoff!.isNotEmpty) ? dropoff! : 'Varış noktan',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _point({required Color color, required String label, required String value}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 3),
+          child: Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(color: FerxgoColors.textLow, fontSize: 11, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(value,
+                maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: FerxgoColors.textHigh, fontSize: 14, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Sürücü aranırken kısa güven veren bilgilendirme.
+class _SearchReassurance extends StatelessWidget {
+  const _SearchReassurance();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: FerxgoColors.brand.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: FerxgoColors.brand.withValues(alpha: 0.2)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.schedule, color: FerxgoColors.brand, size: 18),
+          SizedBox(width: 10),
+          Expanded(child: Text(
+            'Sürücülerin yanıt vermesi genelde 1-2 dakika sürer. Ekranda kal — eşleşince hemen haber vereceğiz.',
+            style: TextStyle(color: FerxgoColors.textMid, fontSize: 12, height: 1.4),
+          )),
         ],
       ),
     );

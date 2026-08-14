@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/error_banner.dart';
+import '../../ads/ad_repository.dart';
+import '../../ads/widgets/ad_banner.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
 import '../widgets/driver_status_badge.dart';
@@ -121,6 +123,12 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(color: FerxgoColors.textLow, fontSize: 12, height: 1.4),
           ),
+        ),
+        const SizedBox(height: 20),
+        // Reklam — genel banner slotu (reklam yoksa AdBanner boş döner, yer kaplamaz).
+        const AdBanner(
+          placement: AdPlacements.homeBanner,
+          margin: EdgeInsets.zero,
         ),
       ],
     );

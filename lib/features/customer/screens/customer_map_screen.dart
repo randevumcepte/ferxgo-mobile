@@ -14,7 +14,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/error_banner.dart';
 import '../../ads/ad_repository.dart';
 import '../../ads/widgets/ad_banner.dart';
-import '../../ads/widgets/ad_popup.dart';
 import '../customer_ride_repository.dart';
 import '../models/nearby_driver.dart';
 import '../models/place.dart';
@@ -74,15 +73,7 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
   Future<void> _bootstrap() async {
     await _resolveLocation();
     await _loadDrivers();
-    // Konum çözüldükten sonra (varsa) popup reklamını bir kez göster.
-    if (mounted) {
-      await AdPopup.maybeShow(
-        context,
-        ref,
-        lat: _hasFix ? _center.latitude : null,
-        lng: _hasFix ? _center.longitude : null,
-      );
-    }
+    // Popup reklamı kaldırıldı — banner slotları (harita + ana ekran) yeterli.
   }
 
   Future<void> _resolveLocation() async {
@@ -260,9 +251,22 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                   ],
                 ),
 
-                // Üst bilgi rozetleri
+                // Radar / harita reklamı — artık haritanın EN ÜSTÜNDE.
+                // (Reklam yoksa AdBanner boş döner, hiç yer kaplamaz.)
+                if (!_searchActive)
+                  Positioned(
+                    left: 12, right: 12, top: 12,
+                    child: AdBanner(
+                      placement: AdPlacements.radarMap,
+                      lat: _center.latitude,
+                      lng: _center.longitude,
+                      margin: EdgeInsets.zero,
+                    ),
+                  ),
+
+                // Bilgi rozetleri — konum butonuyla aynı hizada (sağda butona yer bırakıldı).
                 Positioned(
-                  left: 12, right: 12, top: 12,
+                  left: 12, right: 64, bottom: 18,
                   child: Row(
                     children: [
                       if (_locationError != null)
@@ -284,19 +288,6 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                     ],
                   ),
                 ),
-
-                // Radar / harita reklamı — haritanın altında, konum butonunun üstünde.
-                // (Reklam yoksa AdBanner boş döner, hiç yer kaplamaz.)
-                if (!_searchActive)
-                  Positioned(
-                    left: 12, right: 12, bottom: 64,
-                    child: AdBanner(
-                      placement: AdPlacements.radarMap,
-                      lat: _center.latitude,
-                      lng: _center.longitude,
-                      margin: EdgeInsets.zero,
-                    ),
-                  ),
 
                 // Sağ alt: tekrar konum butonu (harita yarısının altında)
                 Positioned(

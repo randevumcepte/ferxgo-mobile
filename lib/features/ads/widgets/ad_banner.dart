@@ -42,6 +42,27 @@ class _AdBannerState extends ConsumerState<AdBanner> {
     _load();
   }
 
+  @override
+  void didUpdateWidget(covariant AdBanner old) {
+    super.didUpdateWidget(old);
+    // Konum sonradan çözülünce (varsayılan merkez → gerçek konum) veya kullanıcı
+    // belirgin şekilde yer değiştirince reklamı konuma göre yeniden çek.
+    if (_coordsChanged(old.lat, old.lng, widget.lat, widget.lng)) {
+      _load();
+    }
+  }
+
+  /// null↔değer geçişi (ilk konum kilidi) veya ~500m'den fazla kayma → yeniden çek.
+  /// Eşik, GPS titremesinde gereksiz tekrar isteğini (ve gösterim sayacı şişmesini) engeller.
+  bool _coordsChanged(double? oldLat, double? oldLng, double? newLat, double? newLng) {
+    final hadCoords = oldLat != null && oldLng != null;
+    final hasCoords = newLat != null && newLng != null;
+    if (hadCoords != hasCoords) return true;
+    if (!hasCoords) return false;
+    const threshold = 0.005; // ~500m
+    return (oldLat! - newLat).abs() > threshold || (oldLng! - newLng).abs() > threshold;
+  }
+
   Future<void> _load() async {
     try {
       final ad = await ref.read(adRepositoryProvider).fetchOne(
