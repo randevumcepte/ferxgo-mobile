@@ -251,19 +251,6 @@ class _CustomerMapScreenState extends ConsumerState<CustomerMapScreen> {
                   ],
                 ),
 
-                // Radar / harita reklamı — artık haritanın EN ÜSTÜNDE.
-                // (Reklam yoksa AdBanner boş döner, hiç yer kaplamaz.)
-                if (!_searchActive)
-                  Positioned(
-                    left: 12, right: 12, top: 12,
-                    child: AdBanner(
-                      placement: AdPlacements.radarMap,
-                      lat: _center.latitude,
-                      lng: _center.longitude,
-                      margin: EdgeInsets.zero,
-                    ),
-                  ),
-
                 // Bilgi rozetleri — konum butonuyla aynı hizada (sağda butona yer bırakıldı).
                 Positioned(
                   left: 12, right: 64, bottom: 18,
